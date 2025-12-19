@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# THE TYPE OF HARDENING THAT SAVES MARRIAGES #
+#------------------------------------------------------#
+#   CAREFUL, THIS THE SAME SHIT THAT KILLED BELUSHI!   #
+#------------------------------------------------------#
 
 set -euo pipefail
 
