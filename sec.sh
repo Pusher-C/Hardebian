@@ -1,8 +1,8 @@
 #!/bin/bash
 
-set -euo pipefail
+# THE TYPE OF HARDENING THAT SAVES MARRIAGES #
 
-###--ULTRA-HARDENING SCRIPT--###
+set -euo pipefail
 
 # PRE-CONFIG 
 apt install -y extrepo iptables iptables-persistent netfilter-persistent
