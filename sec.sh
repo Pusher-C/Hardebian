@@ -47,7 +47,7 @@ iptables -P OUTPUT ACCEPT
 iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 iptables -A INPUT -i lo -j ACCEPT
 iptables -A INPUT -m conntrack --ctstate INVALID -j DROP
-iptables -A INPUT -i wg0 -j ACCEPT
+iptables -A INPUT -i wg0-mullvad -j ACCEPT
 iptables -A INPUT -p udp -m conntrack --ctstate NEW -j UDP
 iptables -A INPUT -p tcp --syn -m conntrack --ctstate NEW -j TCP
 iptables -A INPUT -p udp -j DROP
@@ -937,37 +937,26 @@ EOF
 
 # MOUNTS
 cp /etc/fstab /etc/fstab.bak
-BOOT_LINE=$(grep -E '^\s*UUID=.*\s+/boot\s+' /etc/fstab || echo "")
-BOOT_EFI_LINE=$(grep -E '^\s*UUID=.*\s+/boot/efi\s+' /etc/fstab || echo "")
 
 cat > /etc/fstab << 'EOF'
-/dev/mapper/lvg-root              /                   ext4       noatime,nodev,errors=remount-ro 0 1
-/dev/mapper/lvg-usr               /usr                ext4       noatime,nodev,ro 0 2
-/dev/mapper/lvg-opt               /opt                ext4       noatime,nodev,nosuid,noexec 0 2
-/dev/mapper/lvg-home              /home               ext4       noatime,nodev,nosuid,noexec 0 2
-/dev/mapper/lvg-var               /var                ext4       noatime,nodev,nosuid 0 2
-/dev/mapper/lvg-var--log          /var/log            ext4       noatime,nodev,nosuid,noexec 0 2
-/dev/mapper/lvg-var--log--audit   /var/log/audit      ext4       noatime,nodev,nosuid,noexec 0 2
-proc                              /proc               proc       noatime,nodev,nosuid,noexec,hidepid=2,gid=proc 0 0
-sysfs                             /sys                sysfs      nodev,nosuid,noexec 0 0
-udev                              /dev                devtmpfs   nosuid,mode=0755 0 0
-tmpfs                             /tmp                tmpfs      size=2G,noatime,nodev,nosuid,noexec,mode=1777 0 0
-tmpfs                             /var/tmp            tmpfs      size=1G,noatime,nodev,nosuid,noexec,mode=1777 0 0
-tmpfs                             /dev/shm            tmpfs      size=512M,noatime,nodev,nosuid,noexec,mode=1777 0 0
-tmpfs                             /run                tmpfs      size=512M,noatime,nodev,nosuid,mode=0755 0 0
-tmpfs                             /home/dev/.cache    tmpfs      size=1G,noatime,nodev,nosuid,noexec,mode=700,uid=1000,gid=1000 0 0
+/dev/mapper/lvg-root       /              ext4    noatime,nodev,errors=remount-ro    0 1
+/dev/mapper/lvg-usr        /usr           ext4    noatime,nodev,ro                   0 2
+/dev/mapper/lvg-var        /var           ext4    noatime,nodev,nosuid               0 2
+/dev/mapper/lvg-var_log    /var/log       ext4    noatime,nodev,nosuid,noexec        0 2
+/dev/mapper/lvg-home       /home          ext4    noatime,nodev,nosuid,noexec        0 2
+proc     /proc      proc      noatime,nodev,nosuid,noexec,hidepid=2,gid=proc    0 0
+tmpfs    /tmp       tmpfs     size=2G,noatime,nodev,nosuid,noexec,mode=1777     0 0
+tmpfs    /var/tmp   tmpfs     size=1G,noatime,nodev,nosuid,noexec,mode=1777     0 0
+tmpfs    /dev/shm   tmpfs     size=512M,noatime,nodev,nosuid,noexec,mode=1777   0 0
+tmpfs    /run       tmpfs     size=512M,noatime,nodev,nosuid,mode=0755          0 0
+tmpfs    /home/dev/.cache    tmpfs    size=1G,noatime,nodev,nosuid,noexec,mode=700,uid=1000,gid=1000    0 0
 EOF
 
-if [ -n "$BOOT_LINE" ]; then
-    BOOT_UUID=$(echo "$BOOT_LINE" | grep -oP 'UUID=[A-Za-z0-9-]+')
-    echo "${BOOT_UUID}    /boot    ext4    noatime,nodev,nosuid,noexec,ro 0 2" >> /etc/fstab
-fi
-if [ -n "$BOOT_EFI_LINE" ]; then
-    BOOT_EFI_UUID=$(echo "$BOOT_EFI_LINE" | grep -oP 'UUID=[A-Za-z0-9-]+')
-    echo "${BOOT_EFI_UUID}    /boot/efi    vfat    noatime,nodev,nosuid,noexec,umask=0077,ro 0 2" >> /etc/fstab
-fi
+
+# Add proc group for hidepid=2 compatibility
 groupadd -f proc
 gpasswd -a root proc
+
 
 # FILE/DIRECTORY PERMISSIONS
 chown root:root /etc/group /etc/group- /etc/passwd /etc/passwd- /etc/security /etc/iptables /etc/default /etc/sudoers /etc/fstab /etc/hosts /etc/host.conf 2>/dev/null || true
