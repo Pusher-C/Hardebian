@@ -294,8 +294,7 @@ Pin-Priority: -1
 EOF
 
 # INSTALL PACKAGES
-apt install -y apparmor apparmor-utils apparmor-profiles apparmor-profiles-extra pamu2fcfg libpam-u2f rsyslog chrony libpam-tmpdir needrestart acct rkhunter chkrootkit debsums unzip patch alsa-utils pavucontrol pipewire pipewire-audio-client-libraries pipewire-pulse wireplumber lynis macchanger unhide tcpd fonts-liberation opensnitch python3-opensnitch*
- libxfce4ui-utils xfce4-panel xfce4-session xfce4-settings xfce4-terminal xfconf xfdesktop4 xfwm4 xserver-xorg xinit xserver-xorg-legacy xfce4-pulseaudio-plugin xfce4-whiskermenu-plugin timeshift gnome-terminal gnome-brave-icon-theme breeze-gtk-theme bibata-cursor-theme
+apt install -y apparmor apparmor-utils apparmor-profiles apparmor-profiles-extra pamu2fcfg libpam-u2f rsyslog chrony libpam-tmpdir needrestart acct rkhunter chkrootkit debsums unzip patch alsa-utils pavucontrol pipewire pipewire-audio-client-libraries pipewire-pulse wireplumber lynis macchanger unhide tcpd fonts-liberation opensnitch python3-opensnitch* libxfce4ui-utils xfce4-panel xfce4-session xfce4-settings xfce4-terminal xfconf xfdesktop4 xfwm4 xserver-xorg xinit xserver-xorg-legacy xfce4-pulseaudio-plugin xfce4-whiskermenu-plugin timeshift gnome-terminal gnome-brave-icon-theme breeze-gtk-theme bibata-cursor-theme
 
 systemctl enable acct
 systemctl start acct
@@ -593,7 +592,7 @@ EOF
 cat >/etc/security/limits.d/limits.conf <<'EOF'
 *           hard    core       0
 *           hard    nproc      2048
-*            -      maxlogins  1
+*            -      maxlogins  2
 root         -      maxlogins  5
 root        hard    nproc      65536
 EOF
@@ -630,7 +629,7 @@ cat > /etc/security/access.conf << 'EOF'
 EOF
 
 # GRUB
-sed -i 's|^GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT="slab_nomerge init_on_alloc=1 init_on_free=1 pti=on page_alloc.shuffle=1 debugfs=off kfence.sample_interval=100 efi_pstore.pstore_disable=1 efi=disable_early_pci_dma random.trust_bootloader=off random.trust_cpu=off extra_latent_entropy iommu=force iommu.strict=1 intel_iommu=on amd_iommu=force_isolation vdso32=0 spectre_v2=on spec_store_bypass_disable=on l1tf=full mds=full tsx=off tsx_async_abort=full retbleed=auto gather_data_sampling=force vsyscall=none kvm.nx_huge_pages=force mitigations=auto quiet ipv6.disable=1 loglevel=3 apparmor=1 security=apparmor audit=1 hardened_usercopy=1 lockdown=confidentiality module.sig_enforce=1 oops=panic"|' /etc/default/grub
+sed -i 's|^GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT="slab_nomerge init_on_alloc=1 init_on_free=1 pti=on page_alloc.shuffle=1 debugfs=off kfence.sample_interval=100 efi_pstore.pstore_disable=1 efi=disable_early_pci_dma random.trust_bootloader=off random.trust_cpu=off extra_latent_entropy iommu=force iommu.strict=1 intel_iommu=on amd_iommu=force_isolation vdso32=0 spectre_v2=on spec_store_bypass_disable=on l1tf=full mds=full tsx=off tsx_async_abort=full retbleed=auto gather_data_sampling=force vsyscall=none kvm.nx_huge_pages=force mitigations=auto quiet ipv6.disable=1 loglevel=3 apparmor=1 security=apparmor audit=1 lockdown=confidentiality oops=panic"|' /etc/default/grub
 update-grub
 chown root:root /etc/default/grub
 chmod 640 /etc/default/grub
@@ -662,13 +661,11 @@ kernel.pid_max=65536
 kernel.printk=3 3 3 3
 kernel.randomize_va_space=2
 kernel.unprivileged_bpf_disabled=1
-kernel.unprivileged_userns_clone=0
+kernel.unprivileged_userns_clone=1
 kernel.yama.ptrace_scope=3
 kernel.keys.root_maxkeys=1000000
 kernel.keys.root_maxbytes=25000000
 kernel.watchdog=0
-kernel.modules_disabled=0
-kernel.acct=1
 kernel.cap_last_cap=38
 net.core.default_qdisc=fq
 net.core.bpf_jit_enable=1
@@ -712,13 +709,7 @@ net.ipv6.conf.default.disable_ipv6=1
 net.ipv6.conf.lo.disable_ipv6=1
 net.netfilter.nf_conntrack_max=2000000
 net.netfilter.nf_conntrack_tcp_loose=0
-vm.unprivileged_userfaultfd=0
-vm.mmap_min_addr=65536
-vm.max_map_count=1048576
 vm.swappiness=1
-vm.overcommit_memory=1
-vm.panic_on_oom=1
-vm.oom_kill_allocating_task=1
 EOF
 sysctl --system
 
@@ -1155,24 +1146,6 @@ RemainAfterExit=yes
 WantedBy=multi-user.target
 EOF
 systemctl enable macchanger@enp0s31f6.service
-
-# CLEANUP
-ln -sf /bin/bash /bin/sh
-# Remove other unused shells
-rm -f /bin/csh /bin/ksh /bin/zsh 2>/dev/null || true
-
-# Lock down package managers at runtime
-# chmod 000 /usr/bin/apt /usr/bin/apt-get /usr/bin/dpkg /usr/bin/snap 2>/dev/null || true
-
-# Remove documentation (information disclosure)
-rm -rf /usr/share/man/* /usr/share/doc/* 2>/dev/null || true
-
-# Remove locale data
-rm -rf /usr/share/locale/* 2>/dev/null || true
-
-# Remove static libraries
-find /usr/lib -name "*.a" -delete 2>/dev/null || true
-find /usr/lib -name "*.la" -delete 2>/dev/null || true
 
 # LOCKDOWN
 find / -xdev \( -perm -4000 -o -perm -2000 \) -type f -exec chmod a-s {} \; 2>/dev/null || true
