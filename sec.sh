@@ -938,6 +938,19 @@ EOF
 # MOUNTS
 cp /etc/fstab /etc/fstab.bak
 
+cp /etc/fstab /etc/fstab.bak
+BOOT_LINE=$(grep -E '^\s*UUID=.*\s+/boot\s+' /etc/fstab || echo "")
+BOOT_EFI_LINE=$(grep -E '^\s*UUID=.*\s+/boot/efi\s+' /etc/fstab || echo "")
+
+if [ -n "$BOOT_LINE" ]; then
+    BOOT_UUID=$(echo "$BOOT_LINE" | grep -oP 'UUID=[A-Za-z0-9-]+')
+    echo "${BOOT_UUID}    /boot    ext4    noatime,nodev,nosuid,noexec,ro 0 2" >> /etc/fstab
+fi
+if [ -n "$BOOT_EFI_LINE" ]; then
+    BOOT_EFI_UUID=$(echo "$BOOT_EFI_LINE" | grep -oP 'UUID=[A-Za-z0-9-]+')
+    echo "${BOOT_EFI_UUID}    /boot/efi    vfat    noatime,nodev,nosuid,noexec,umask=0077,ro 0 2" >> /etc/fstab
+fi
+
 cat > /etc/fstab << 'EOF'
 /dev/mapper/lvg-root       /              ext4    noatime,nodev,errors=remount-ro    0 1
 /dev/mapper/lvg-usr        /usr           ext4    noatime,nodev,ro                   0 2
@@ -952,8 +965,6 @@ tmpfs    /run       tmpfs     size=512M,noatime,nodev,nosuid,mode=0755          
 tmpfs    /home/dev/.cache    tmpfs    size=1G,noatime,nodev,nosuid,noexec,mode=700,uid=1000,gid=1000    0 0
 EOF
 
-
-# Add proc group for hidepid=2 compatibility
 groupadd -f proc
 gpasswd -a root proc
 
@@ -986,9 +997,9 @@ chmod 0755 /run/systemd 2>/dev/null || true
 touch /etc/security/opasswd
 chown root:root /etc/security/opasswd
 chmod 0600 /etc/security/opasswd
-chown root:adm -R /var/log
-chmod -R 0640 /var/log
-chmod 0750 /var/log
+chown root:adm -R /var/log 2>/dev/null || true
+chmod -R 0640 /var/log 2>/dev/null || true
+chmod 0750 /var/log 2>/dev/null || true
 
 # OPENSNITCH CONFIGURATION
 systemctl enable opensnitch
@@ -1144,7 +1155,6 @@ apt autopurge -y
 RC_PKGS=$(dpkg -l | grep '^rc' | awk '{print $2}' || true)
 [ -n "$RC_PKGS" ] && apt purge -y $RC_PKGS || true
 
-# Critical auth files
 chattr +i /etc/conf 2>/dev/null || true
 chattr +i /etc/passwd 2>/dev/null || true
 chattr +i /etc/passwd- 2>/dev/null || true
@@ -1158,8 +1168,6 @@ chattr +i /etc/login.defs 2>/dev/null || true
 chattr +i /etc/shells 2>/dev/null || true
 chattr +i /etc/securetty 2>/dev/null || true
 chattr +i /etc/services 2>/dev/null || true
-
-# Config files
 chattr +i /etc/fstab 2>/dev/null || true
 chattr +i /etc/adduser.conf 2>/dev/null || true
 chattr +i /etc/deluser.conf 2>/dev/null || true
@@ -1170,32 +1178,22 @@ chattr +i /etc/hosts.deny 2>/dev/null || true
 chattr -R +i /etc/default 2>/dev/null || true
 chattr -R +i /etc/sudoers 2>/dev/null || true
 chattr -R +i /etc/sudoers.d 2>/dev/null || true
-
-# PAM
 chattr -R +i /etc/pam.d 2>/dev/null || true
 chattr -R +i /usr/lib/pam.d 2>/dev/null || true
 chattr -R +i /etc/security 2>/dev/null || true
-
-# Sysctl and modules
 chattr +i /usr/lib/sysctl.d/sysctl.conf 2>/dev/null || true
 chattr -R +i /usr/lib/sysctl.d 2>/dev/null || true
 chattr -R +i /etc/sysctl.conf 2>/dev/null || true
 chattr -R +i /etc/sysctl.d 2>/dev/null || true
 chattr -R +i /etc/modprobe.d 2>/dev/null || true
 chattr -R +i /usr/lib/modprobe.d 2>/dev/null || true
-
-# Firewall
 chattr -R +i /etc/iptables 2>/dev/null || true
-
-# Shell configs
 chattr -R +i /etc/profile 2>/dev/null || true
 chattr -R +i /etc/profile.d 2>/dev/null || true
 chattr -R +i /etc/bash.bashrc 2>/dev/null || true
 chattr -R +i /etc/bashrc 2>/dev/null || true
 chattr +i /root/.bashrc 2>/dev/null || true
 chattr +i /home/dev/.bashrc 2>/dev/null || true
-
-# Cron/at (if any remain)
 chattr -R +i /etc/cron.allow 2>/dev/null || true
 chattr -R +i /etc/at.allow 2>/dev/null || true
 chattr -R +i /etc/cron.d 2>/dev/null || true
@@ -1203,12 +1201,15 @@ chattr -R +i /etc/cron.daily 2>/dev/null || true
 chattr -R +i /etc/cron.hourly 2>/dev/null || true
 chattr -R +i /etc/cron.monthly 2>/dev/null || true
 chattr -R +i /etc/cron.weekly 2>/dev/null || true
-
-# Polkit and name resolution
 chattr -R +i /etc/polkit-1 2>/dev/null || true
 chattr +i /etc/nsswitch.conf 2>/dev/null || true
 chattr +i /etc/ld.so.conf 2>/dev/null || true
 chattr -R +i /etc/ld.so.conf.d 2>/dev/null || true
+chattr -R +i /lib/modules 2>/dev/null || true
+chattr -R +i /etc 2>/dev/null || true
+chattr -R +i /usr 2>/dev/null || true
+chattr -R +i /boot 2>/dev/null || true
+
 
 # NOTE: /etc/resolv.conf left mutable for DHCP/VPN updates
 # NOTE: /etc and /usr blanket immutable removed - too aggressive
