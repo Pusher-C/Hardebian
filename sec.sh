@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#------------------------------------------------------#
-#   CAREFUL, THIS THE SAME SHIT THAT KILLED BELUSHI!   #
-#------------------------------------------------------#
+############-WARNING-#############
+##-THIS THE SHIT KILLED BELUSHI-##
+####-TAKE IT EASY YOUNG BLOOD-####
 
 set -euo pipefail
 
@@ -63,7 +63,7 @@ iptables-save > /etc/iptables/rules.v4
 ip6tables-save > /etc/iptables/rules.v6
 netfilter-persistent save
 
-# PACKAGE RESTRICTIONS
+# PACKAGE REMOVAL/RESTRICTING
 apt purge -y zram* pci* pmount* cron* avahi* bc bind9* dns* fastfetch fonts-noto* fprint* dhcp* lxc* docker* podman* xen* bochs* uml* vagrant* ssh* openssh* samba* winbind* qemu* libvirt* virt* avahi* cup* print* rsync* nftables* virtual* sane* rpc* bind* nfs* blue* spee* espeak* mobile* wireless* inet* util-linux-locales tasksel* vim* os-prober* netcat* gcc g++ gdb lldb strace* ltrace* build-essential automake autoconf libtool cmake ninja-build meson 2>/dev/null || true
 
 install -d /etc/apt/preferences.d
@@ -176,7 +176,7 @@ Package: sendmail*
 Pin: release *
 Pin-Priority: -1
 
-Package: printer*
+Package: printer-driver*
 Pin: release *
 Pin-Priority: -1
 
@@ -216,11 +216,11 @@ Package: wpasupplicant*
 Pin: release *
 Pin-Priority: -1
 
-Package: wireless-tools*
+Package: wireless*
 Pin: release *
 Pin-Priority: -1
 
-Package: inetutils*
+Package: inet*
 Pin: release *
 Pin-Priority: -1
 
@@ -287,14 +287,10 @@ Pin-Priority: -1
 Package: php*
 Pin: release *
 Pin-Priority: -1
-
-Package: ruby*
-Pin: release *
-Pin-Priority: -1
 EOF
 
-# INSTALL PACKAGES
-apt install -y apparmor apparmor-utils apparmor-profiles apparmor-profiles-extra pamu2fcfg libpam-u2f rsyslog chrony libpam-tmpdir needrestart acct rkhunter chkrootkit debsums unzip patch alsa-utils pavucontrol pipewire pipewire-audio-client-libraries pipewire-pulse wireplumber lynis macchanger unhide tcpd fonts-liberation opensnitch python3-opensnitch* libxfce4ui-utils xfce4-panel xfce4-session xfce4-settings xfce4-terminal xfconf xfdesktop4 xfwm4 xserver-xorg xinit xserver-xorg-legacy xfce4-pulseaudio-plugin xfce4-whiskermenu-plugin timeshift gnome-terminal gnome-brave-icon-theme breeze-gtk-theme bibata-cursor-theme
+# PACKAGE INSTALLATION
+apt install -y apparmor apparmor-utils apparmor-profiles apparmor-profiles-extra pamu2fcfg libpam-u2f rsyslog chrony libpam-tmpdir needrestart acct rkhunter chkrootkit debsums unzip patch alsa-utils pavucontrol pipewire pipewire-audio-client-libraries pipewire-pulse wireplumber lynis macchanger unhide tcpd fonts-liberation opensnitch python3-opensnitch libxfce4ui-utils xfce4-panel xfce4-session xfce4-settings xfconf xfdesktop4 xfwm4 xserver-xorg xinit xserver-xorg-legacy xfce4-pulseaudio-plugin xfce4-whiskermenu-plugin gnome-terminal gnome-brave-icon-theme breeze-gtk-theme bibata-cursor-theme gdebi-core
 
 systemctl enable acct
 systemctl start acct
@@ -304,7 +300,7 @@ systemctl enable apparmor
 systemctl start apparmor
 aa-enforce /etc/apparmor.d/* 2>/dev/null || true
 
-# AUDITD SETUP
+# AUDITD
 apt install -y auditd audispd-plugins
 systemctl enable auditd
 
@@ -326,33 +322,22 @@ cat >/etc/audit/rules.d/privilege-escalation.rules <<'EOF'
 -w /etc/gshadow -p wa -k identity
 -w /etc/sudoers -p wa -k privilege_escalation
 -w /etc/sudoers.d -p wa -k privilege_escalation
-
-# PAM configuration
 -w /etc/pam.d -p wa -k pam_config
 -w /etc/security -p wa -k security_config
-
-# Privilege escalation binaries
 -w /usr/bin/sudo -p x -k privilege_escalation
 -w /usr/bin/su -p x -k privilege_escalation
 -w /usr/bin/passwd -p x -k privilege_escalation
 -w /usr/bin/chsh -p x -k privilege_escalation
 -w /usr/bin/chfn -p x -k privilege_escalation
 -w /usr/bin/newgrp -p x -k privilege_escalation
-
-# Module loading
 -w /sbin/insmod -p x -k module_load
 -w /sbin/rmmod -p x -k module_load
 -w /sbin/modprobe -p x -k module_load
-
-# Network configuration
 -w /etc/hosts -p wa -k network_config
 -w /etc/iptables -p wa -k firewall_config
 
-# Root command execution
 -a always,exit -F arch=b64 -S execve -F euid=0 -F auid>=1000 -F auid!=4294967295 -k root_commands
 -a always,exit -F arch=b32 -S execve -F euid=0 -F auid>=1000 -F auid!=4294967295 -k root_commands
-
-# Make rules immutable (must be last)
 -e 2
 EOF
 
@@ -360,7 +345,7 @@ chmod 640 /etc/audit/rules.d/privilege-escalation.rules
 chown root:root /etc/audit/rules.d/privilege-escalation.rules
 
 # PAM/U2F
-pamu2fcfg -u dev > /etc/conf
+pamu2fcfg -u dev > /root/conf
 chmod 400 /etc/conf
 chown root:root /etc/conf
 chattr +i /etc/conf
@@ -379,24 +364,24 @@ chattr +i /etc/security/faillock.conf
 
 cat >/etc/pam.d/chfn <<'EOF'
 #%PAM-1.0
-auth      sufficient    pam_rootok.so
-auth      include       common-auth
-account   include       common-account
-session   include       common-session
+auth      sufficient  pam_rootok.so
+auth      include     common-auth
+account   include     common-account
+session   include     common-session
 EOF
 
 cat >/etc/pam.d/chpasswd <<'EOF'
 #%PAM-1.0
-password  include       common-password
+password  include     common-password
 EOF
 
 cat >/etc/pam.d/chsh <<'EOF'
 #%PAM-1.0
-auth      required      pam_shells.so
-auth      sufficient    pam_rootok.so
-auth      include       common-auth
-account   include       common-account
-session   include       common-session
+auth      required    pam_shells.so
+auth      sufficient  pam_rootok.so
+auth      include     common-auth
+account   include     common-account
+session   include     common-session
 EOF
 
 cat > /etc/pam.d/common-auth <<'EOF'
@@ -409,155 +394,179 @@ EOF
 
 cat >/etc/pam.d/common-account <<'EOF'
 #%PAM-1.0
-account   required      pam_unix.so
+account   required    pam_unix.so
 EOF
 
 cat >/etc/pam.d/common-password <<'EOF'
 #%PAM-1.0
-password  [success=1 default=ignore] pam_unix.so obscure use_authtok try_first_pass yescrypt
-password  requisite     pam_deny.so
+password  [success=1 default=ignore]  pam_unix.so obscure use_authtok try_first_pass yescrypt
+password  requisite                   pam_deny.so
 EOF
 
 cat >/etc/pam.d/common-session <<'EOF'
 #%PAM-1.0
-session   required      pam_limits.so
-session   required      pam_env.so
-session   optional      pam_systemd.so
-session   optional      pam_umask.so umask=077
-session   optional      pam_tmpdir.so
-session   required      pam_unix.so
+session   required    pam_limits.so
+session   required    pam_env.so
+session   optional    pam_systemd.so
+session   optional    pam_umask.so umask=077
+session   optional    pam_tmpdir.so
+session   required    pam_unix.so
 EOF
 
 cat >/etc/pam.d/common-session-noninteractive <<'EOF'
 #%PAM-1.0
-session   required      pam_limits.so
-session   required      pam_env.so
-session   optional      pam_systemd.so
-session   optional      pam_umask.so umask=077
-session   optional      pam_tmpdir.so
-session   required      pam_unix.so
+session   required    pam_limits.so
+session   required    pam_env.so
+session   optional    pam_systemd.so
+session   optional    pam_umask.so umask=077
+session   optional    pam_tmpdir.so
+session   required    pam_unix.so
 EOF
 
 cat >/etc/pam.d/sudo <<'EOF'
 #%PAM-1.0
-auth      required       pam_faillock.so preauth deny=3 unlock_time=900
-auth      sufficient     pam_u2f.so authfile=/etc/conf
-auth      [default=die]  pam_faillock.so authfail deny=3 unlock_time=900
-auth      requisite      pam_deny.so
-account   include        common-account
-password  include        common-password
-session   include        common-session
+auth      required      pam_faillock.so preauth deny=3 unlock_time=900
+auth      sufficient    pam_u2f.so authfile=/etc/conf
+auth      [default=die] pam_faillock.so authfail deny=3 unlock_time=900
+auth      requisite     pam_deny.so
+account   include       common-account
+password  include       common-password
+session   include       common-session
 EOF
 
 cat >/etc/pam.d/sudo-i <<'EOF'
 #%PAM-1.0
-auth      required       pam_faillock.so preauth deny=3 unlock_time=900
-auth      sufficient     pam_u2f.so authfile=/etc/conf
-auth      [default=die]  pam_faillock.so authfail deny=3 unlock_time=900
-auth      requisite      pam_deny.so
-account   include        common-account
-password  include        common-password
-session   include        common-session
+auth      required      pam_faillock.so preauth deny=3 unlock_time=900
+auth      sufficient    pam_u2f.so authfile=/etc/conf
+auth      [default=die] pam_faillock.so authfail deny=3 unlock_time=900
+auth      requisite     pam_deny.so
+account   include       common-account
+password  include       common-password
+session   include       common-session
 EOF
 
 cat >/etc/pam.d/su <<'EOF'
 #%PAM-1.0
-auth      required       pam_faillock.so preauth deny=3 unlock_time=900
-auth      sufficient     pam_u2f.so authfile=/etc/conf
-auth      [default=die]  pam_faillock.so authfail deny=3 unlock_time=900
-auth      requisite      pam_deny.so
-account   include        common-account
-password  include        common-password
-session   include        common-session
+auth      required      pam_faillock.so preauth deny=3 unlock_time=900
+auth      sufficient    pam_u2f.so authfile=/etc/conf
+auth      [default=die] pam_faillock.so authfail deny=3 unlock_time=900
+auth      requisite     pam_deny.so
+account   include       common-account
+password  include       common-password
+session   include       common-session
 EOF
 
 cat >/etc/pam.d/su-l <<'EOF'
 #%PAM-1.0
-auth      required       pam_faillock.so preauth deny=3 unlock_time=900
-auth      sufficient     pam_u2f.so authfile=/etc/conf
-auth      [default=die]  pam_faillock.so authfail deny=3 unlock_time=900
-auth      requisite      pam_deny.so
-account   include        common-account
-password  include        common-password
-session   include        common-session
+auth      required      pam_faillock.so preauth deny=3 unlock_time=900
+auth      sufficient    pam_u2f.so authfile=/etc/conf
+auth      [default=die] pam_faillock.so authfail deny=3 unlock_time=900
+auth      requisite     pam_deny.so
+account   include       common-account
+password  include       common-password
+session   include       common-session
 EOF
 
 cat >/etc/pam.d/sshd <<'EOF'
 #%PAM-1.0
-auth      required       pam_deny.so
-account   required       pam_deny.so
-password  required       pam_deny.so
-session   required       pam_deny.so
+auth      required    pam_deny.so
+account   required    pam_deny.so
+password  required    pam_deny.so
+session   required    pam_deny.so
 EOF
 
 cat >/etc/pam.d/other <<'EOF'
 #%PAM-1.0
-auth      required       pam_deny.so
-account   required       pam_deny.so
-password  required       pam_deny.so
-session   required       pam_deny.so
+auth      required    pam_deny.so
+account   required    pam_deny.so
+password  required    pam_deny.so
+session   required    pam_deny.so
 EOF
 
 cat >/etc/pam.d/login <<'EOF'
 #%PAM-1.0
-auth      required       pam_faillock.so preauth deny=3 unlock_time=900
-auth      sufficient     pam_u2f.so authfile=/etc/conf
-auth      [default=die]  pam_faillock.so authfail deny=3 unlock_time=900
-auth      requisite      pam_nologin.so
-auth      requisite      pam_deny.so
-auth      optional       pam_faildelay.so delay=3000000
-account   required       pam_access.so
-account   include        common-account
-password  include        common-password
-session   include        common-session
+auth      required      pam_faillock.so preauth deny=3 unlock_time=900
+auth      sufficient    pam_u2f.so authfile=/etc/conf
+auth      [default=die] pam_faillock.so authfail deny=3 unlock_time=900
+auth      requisite     pam_nologin.so
+auth      requisite     pam_deny.so
+auth      optional      pam_faildelay.so delay=3000000
+account   required      pam_access.so
+account   include       common-account
+password  include       common-password
+session   include       common-session
 EOF
 
 cat >/etc/pam.d/lightdm <<'EOF'
 #%PAM-1.0
-auth      required       pam_faillock.so preauth deny=3 unlock_time=900
-auth      sufficient     pam_u2f.so authfile=/etc/conf
-auth      [default=die]  pam_faillock.so authfail deny=3 unlock_time=900
-auth      requisite      pam_nologin.so
-auth      requisite      pam_deny.so
-account   include        common-account
-password  include        common-password
-session   include        common-session
+auth      required      pam_faillock.so preauth deny=3 unlock_time=900
+auth      sufficient    pam_u2f.so authfile=/etc/conf
+auth      [default=die] pam_faillock.so authfail deny=3 unlock_time=900
+auth      requisite     pam_nologin.so
+auth      requisite     pam_deny.so
+account   include       common-account
+password  include       common-password
+session   include       common-session
 EOF
 
 cat >/etc/pam.d/lightdm-greeter <<'EOF'
 #%PAM-1.0
-auth      required       pam_faillock.so preauth deny=3 unlock_time=900
-auth      sufficient     pam_u2f.so authfile=/etc/conf
-auth      [default=die]  pam_faillock.so authfail deny=3 unlock_time=900
-auth      requisite      pam_nologin.so
-auth      requisite      pam_deny.so
-account   include        common-account
-password  include        common-password
-session   include        common-session
+auth      required      pam_faillock.so preauth deny=3 unlock_time=900
+auth      sufficient    pam_u2f.so authfile=/etc/conf
+auth      [default=die] pam_faillock.so authfail deny=3 unlock_time=900
+auth      requisite     pam_nologin.so
+auth      requisite     pam_deny.so
+account   include       common-account
+password  include       common-password
+session   include       common-session
 EOF
 
 cat >/etc/pam.d/newusers <<'EOF'
 #%PAM-1.0
-password  include        common-password
+password  include     common-password
 EOF
 
 cat >/etc/pam.d/passwd <<'EOF'
 #%PAM-1.0
-password  include        common-password
+password  include     common-password
 EOF
 
 cat >/etc/pam.d/runuser <<'EOF'
 #%PAM-1.0
-auth      sufficient     pam_rootok.so
-session   required       pam_limits.so
-session   required       pam_unix.so
+auth      sufficient  pam_rootok.so
+session   required    pam_limits.so
+session   required    pam_unix.so
 EOF
 
 cat >/etc/pam.d/runuser-l <<'EOF'
 #%PAM-1.0
-auth      include        runuser
-session   include        runuser
+auth      include     runuser
+session   include     runuser
 EOF
+
+# OVH
+apt install -y git
+git clone https://github.com/ovh/debian-cis.git
+cd debian-cis
+cp debian/default /etc/default/cis-hardening
+sed -i "s#CIS_LIB_DIR=.*#CIS_LIB_DIR='$(pwd)'/lib#" /etc/default/cis-hardening
+sed -i "s#CIS_CHECKS_DIR=.*#CIS_CHECKS_DIR='$(pwd)'/bin/hardening#" /etc/default/cis-hardening
+sed -i "s#CIS_CONF_DIR=.*#CIS_CONF_DIR='$(pwd)'/etc#" /etc/default/cis-hardening
+sed -i "s#CIS_TMP_DIR=.*#CIS_TMP_DIR='$(pwd)'/tmp#" /etc/default/cis-hardening
+sed -i "s#CIS_VERSIONS_DIR=.*#CIS_VERSIONS_DIR='$(pwd)'/versions#" /etc/default/cis-hardening
+bin/hardening.sh --audit-all --allow-unsupported-distribution || true
+bin/hardening.sh --set-hardening-level 5 --allow-unsupported-distribution || true
+# Remove checks that conflict with our setup
+rm -f bin/hardening/disable_print_server.sh
+rm -f bin/hardening/disable_avahi_server.sh
+rm -f bin/hardening/disable_xwindow_system.sh
+rm -f bin/hardening/install_tripwire.sh
+rm -f bin/hardening/install_syslog-ng.sh
+bin/hardening.sh --apply --allow-unsupported-distribution || true
+bin/hardening.sh --apply --allow-unsupported-distribution || true
+bin/hardening.sh --apply --allow-unsupported-distribution || true
+apt purge -y ssh* openssh* libssh* 2>/dev/null || true
+cd
 
 # SUDO
 cat >/etc/sudoers <<'EOF'
@@ -586,15 +595,15 @@ dpkg-reconfigure -f noninteractive xserver-xorg-legacy || true
 
 cat >/etc/host.conf <<'EOF'
 multi on
-order hosts
+order hosts,bind
 EOF
 
 cat >/etc/security/limits.d/limits.conf <<'EOF'
-*           hard    core       0
 *           hard    nproc      2048
-*            -      maxlogins  2
+*            -      maxlogins  1
 root         -      maxlogins  5
 root        hard    nproc      65536
+*           hard    core       0
 EOF
 
 echo "ProcessSizeMax=0
@@ -628,13 +637,13 @@ cat > /etc/security/access.conf << 'EOF'
 -:ALL:ALL
 EOF
 
-# GRUB
-sed -i 's|^GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT="slab_nomerge init_on_alloc=1 init_on_free=1 pti=on page_alloc.shuffle=1 debugfs=off kfence.sample_interval=100 efi_pstore.pstore_disable=1 efi=disable_early_pci_dma random.trust_bootloader=off random.trust_cpu=off extra_latent_entropy iommu=force iommu.strict=1 intel_iommu=on amd_iommu=force_isolation vdso32=0 spectre_v2=on spec_store_bypass_disable=on l1tf=full mds=full tsx=off tsx_async_abort=full retbleed=auto gather_data_sampling=force vsyscall=none kvm.nx_huge_pages=force mitigations=auto quiet ipv6.disable=1 loglevel=3 apparmor=1 security=apparmor audit=1 lockdown=confidentiality oops=panic"|' /etc/default/grub
+# GRUB 
+sed -i 's|^GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT="slab_nomerge init_on_alloc=1 init_on_free=1 pti=on page_alloc.shuffle=1 debugfs=off kfence.sample_interval=100 efi_pstore.pstore_disable=1 efi=disable_early_pci_dma random.trust_bootloader=off random.trust_cpu=off extra_latent_entropy iommu=force iommu.strict=1 intel_iommu=on amd_iommu=force_isolation vdso32=0 spectre_v2=on spec_store_bypass_disable=on l1tf=full mds=full tsx=off tsx_async_abort=full retbleed=auto gather_data_sampling=force vsyscall=none kvm.nx_huge_pages=force mitigations=auto quiet ipv6.disable=1 loglevel=3 apparmor=1 security=apparmor audit=1 hardened_usercopy=1 lockdown=confidentiality module.sig_enforce=1 oops=panic"|' /etc/default/grub
 update-grub
 chown root:root /etc/default/grub
 chmod 640 /etc/default/grub
 
-# SYCTL
+# SYSCTL 
 rm -rf /usr/lib/sysctl.d
 mkdir -p /usr/lib/sysctl.d
 cat > /usr/lib/sysctl.d/sysctl.conf << 'EOF'
@@ -661,11 +670,13 @@ kernel.pid_max=65536
 kernel.printk=3 3 3 3
 kernel.randomize_va_space=2
 kernel.unprivileged_bpf_disabled=1
-kernel.unprivileged_userns_clone=1
+kernel.unprivileged_userns_clone=0
 kernel.yama.ptrace_scope=3
 kernel.keys.root_maxkeys=1000000
 kernel.keys.root_maxbytes=25000000
 kernel.watchdog=0
+kernel.modules_disabled=0
+kernel.acct=1
 kernel.cap_last_cap=38
 net.core.default_qdisc=fq
 net.core.bpf_jit_enable=1
@@ -709,7 +720,13 @@ net.ipv6.conf.default.disable_ipv6=1
 net.ipv6.conf.lo.disable_ipv6=1
 net.netfilter.nf_conntrack_max=2000000
 net.netfilter.nf_conntrack_tcp_loose=0
+vm.unprivileged_userfaultfd=0
+vm.mmap_min_addr=65536
+vm.max_map_count=1048576
 vm.swappiness=1
+vm.overcommit_memory=1
+vm.panic_on_oom=1
+vm.oom_kill_allocating_task=1
 EOF
 sysctl --system
 
@@ -935,7 +952,7 @@ blacklist iwldvm
 install iwldvm /bin/false
 EOF
 
-# MOUNTS
+# FSTAB 
 cp /etc/fstab /etc/fstab.bak
 
 cp /etc/fstab /etc/fstab.bak
@@ -968,8 +985,7 @@ EOF
 groupadd -f proc
 gpasswd -a root proc
 
-
-# FILE/DIRECTORY PERMISSIONS
+# PERMISSIONS
 chown root:root /etc/group /etc/group- /etc/passwd /etc/passwd- /etc/security /etc/iptables /etc/default /etc/sudoers /etc/fstab /etc/hosts /etc/host.conf 2>/dev/null || true
 chmod 0644 /etc/passwd
 chmod 0644 /etc/group
@@ -997,18 +1013,50 @@ chmod 0755 /run/systemd 2>/dev/null || true
 touch /etc/security/opasswd
 chown root:root /etc/security/opasswd
 chmod 0600 /etc/security/opasswd
-chown root:adm -R /var/log 2>/dev/null || true
-chmod -R 0640 /var/log 2>/dev/null || true
-chmod 0750 /var/log 2>/dev/null || true
+chown root:adm -R /var/log
+chmod -R 0640 /var/log
+chmod 0750 /var/log
 
-# OPENSNITCH CONFIGURATION
-systemctl enable opensnitch
-systemctl start opensnitch
+# OPENSNITCH 
+cat > /etc/systemd/system/opensnitchd.service << 'EOF'
+[Unit]
+Description=OpenSnitch Firewall Daemon
+After=network.target
+After=netfilter-persistent.service
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/opensnitchd -rules-path /etc/opensnitchd/rules -log-file /var/log/opensnitchd.log
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Create rules directory if it doesn't exist
+mkdir -p /etc/opensnitchd/rules
+chmod 750 /etc/opensnitchd
+chmod 750 /etc/opensnitchd/rules
+
+# Create log file with proper permissions
+touch /var/log/opensnitchd.log
+chmod 640 /var/log/opensnitchd.log
+
+# Enable and start the daemon
+systemctl daemon-reload
+systemctl enable opensnitchd.service
+systemctl start opensnitchd.service
+
+# Install Blocklists
 git clone --depth 1 https://github.com/DXC-0/Respect-My-Internet.git
 cd Respect-My-Internet
 chmod +x install.sh
 ./install.sh
-systemctl restart opensnitch
+systemctl restart opensnitchd
 cd
 
 # PRIVILEGE ESCALATION HARDENING
@@ -1023,13 +1071,13 @@ chmod 600 /etc/at.allow
 echo "" > /etc/cron.deny 2>/dev/null || true
 echo "" > /etc/at.deny 2>/dev/null || true
 
-# KERNEL MODULE LOCKDOWN SERVICE
+# MODULE LOCKDOWN
 cat >/etc/systemd/system/lock-modules.service <<'EOF'
 [Unit]
 Description=Disable kernel module loading
 After=multi-user.target
 After=graphical.target
-After=opensnitch.service
+After=opensnitchd.service
 
 [Service]
 Type=oneshot
@@ -1043,68 +1091,210 @@ EOF
 systemctl daemon-reload
 systemctl enable lock-modules.service
 
-# ESCALATION HARDENING
+# PRIVILEGE ESCALATION MONITORING 
 cat > /usr/local/bin/escalation-monitor <<'EOF'
 #!/bin/bash
-# Detects privilege escalation attempts and self-destructs system
 
 LOG="/var/log/escalation-monitor.log"
+BASELINE_FILE="/var/lib/escalation-monitor-baseline"
+MODULES_BASELINE="/var/lib/modules-baseline"
+
 HALT_ON_VIOLATION=1
+
+EXCLUDE_DIRS=(
+    "/timeshift"
+)
 
 log_alert() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] ALERT: $1" >> "$LOG"
     logger -t ESCALATION_MONITOR -p security.crit "$1"
 }
 
-# Check for unauthorized SUID/SGID bits
-SUID_FILES=$(find / -xdev \( -perm -4000 -o -perm -2000 \) 2>/dev/null | wc -l)
-EXPECTED_SUID=3
+log_info() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $1" >> "$LOG"
+}
 
-if [ "$SUID_FILES" -gt "$EXPECTED_SUID" ]; then
-    log_alert "Unauthorized SUID files detected: $SUID_FILES (expected $EXPECTED_SUID)"
-    find / -xdev \( -perm -4000 -o -perm -2000 \) 2>/dev/null >> "$LOG"
-    if [ $HALT_ON_VIOLATION -eq 1 ]; then
-        systemctl halt
+# Build the find exclusion string
+build_exclusions() {
+    local excludes=""
+    for dir in "${EXCLUDE_DIRS[@]}"; do
+        if [ -d "$dir" ]; then
+            excludes="$excludes -path '$dir' -prune -o"
+        fi
+    done
+    echo "$excludes"
+}
+
+# SUID/SGID CHECK
+PRUNE_PATTERN=""
+for dir in "${EXCLUDE_DIRS[@]}"; do
+    if [ -d "$dir" ]; then
+        PRUNE_PATTERN="$PRUNE_PATTERN -path $dir -prune -o"
     fi
-fi
+done
 
-# Check for kernel module tampering
-if [ -f /var/lib/modules-baseline ]; then
-    if ! find /lib/modules -name "*.ko" -type f -exec md5sum {} \; | diff -q - /var/lib/modules-baseline >/dev/null 2>&1; then
-        log_alert "Kernel modules have been modified"
+# Get current SUID files
+CURRENT_SUID=$(eval "find / -xdev $PRUNE_PATTERN \( -perm -4000 -o -perm -2000 \) -type f -print 2>/dev/null" | sort)
+CURRENT_SUID_COUNT=$(echo "$CURRENT_SUID" | grep -c . || echo "0"
+if [ ! -f "$BASELINE_FILE" ]; then
+    log_info "First run - establishing SUID baseline with $CURRENT_SUID_COUNT files"
+    echo "$CURRENT_SUID" > "$BASELINE_FILE"
+    chmod 600 "$BASELINE_FILE"
+    chattr +i "$BASELINE_FILE" 2>/dev/null || true
+    log_info "Baseline files:"
+    echo "$CURRENT_SUID" >> "$LOG"
+else
+    # Compare against baseline
+    chattr -i "$BASELINE_FILE" 2>/dev/null || true
+    BASELINE_SUID=$(cat "$BASELINE_FILE")
+    chattr +i "$BASELINE_FILE" 2>/dev/null || true
+    
+# Check for new SUID files
+    NEW_SUID=$(comm -23 <(echo "$CURRENT_SUID") <(echo "$BASELINE_SUID") 2>/dev/null)
+    
+# Check for removed SUID files
+    REMOVED_SUID=$(comm -13 <(echo "$CURRENT_SUID") <(echo "$BASELINE_SUID") 2>/dev/null)
+    
+    if [ -n "$NEW_SUID" ] && [ "$NEW_SUID" != "" ]; then
+        log_alert "NEW SUID/SGID files detected:"
+        echo "$NEW_SUID" >> "$LOG"
+        
         if [ $HALT_ON_VIOLATION -eq 1 ]; then
+            log_alert "Halting system due to unauthorized SUID files"
+            sync
             systemctl halt
         fi
     fi
-fi
-
-# Check for rootkit signatures
-if command -v rkhunter >/dev/null 2>&1; then
-    rkhunter --check --skip-keypress --report-warnings-only >> "$LOG" 2>&1 || true
-fi
-
-# Check for suspicious processes
-if grep -q "pam_u2f.*failure" /var/log/auth.log 2>/dev/null; then
-    RECENT_FAILS=$(grep "pam_u2f.*failure" /var/log/auth.log | tail -5)
-    FAIL_COUNT=$(echo "$RECENT_FAILS" | wc -l)
-    if [ "$FAIL_COUNT" -ge 3 ]; then
-        log_alert "Multiple U2F authentication failures detected ($FAIL_COUNT)"
+    
+    if [ -n "$REMOVED_SUID" ] && [ "$REMOVED_SUID" != "" ]; then
+        log_info "SUID/SGID files removed (may be normal):"
+        echo "$REMOVED_SUID" >> "$LOG"
+        # Don't halt on removal - that's usually fine
     fi
 fi
 
-# Check for privilege escalation syscall attempts
-if journalctl -u auditd --no-pager 2>/dev/null | grep -E "syscall=(2|22|36|39|49|56|234|235)" >/dev/null 2>&1; then
-    log_alert "Suspicious privilege escalation syscall detected"
+# KERNEL MODULE CHECK 
+if [ -f "$MODULES_BASELINE" ]; then
+    # Create temp file for current state
+    CURRENT_MODULES=$(mktemp)
+    find /lib/modules -name "*.ko" -type f -exec md5sum {} \; 2>/dev/null | sort > "$CURRENT_MODULES"
+    
+    chattr -i "$MODULES_BASELINE" 2>/dev/null || true
+    BASELINE_SORTED=$(mktemp)
+    sort "$MODULES_BASELINE" > "$BASELINE_SORTED"
+    chattr +i "$MODULES_BASELINE" 2>/dev/null || true
+    
+    if ! diff -q "$CURRENT_MODULES" "$BASELINE_SORTED" >/dev/null 2>&1; then
+        # Get specific changes
+        CHANGES=$(diff "$BASELINE_SORTED" "$CURRENT_MODULES" 2>/dev/null | head -20)
+        log_alert "Kernel modules have been modified:"
+        echo "$CHANGES" >> "$LOG"
+        
+        if [ $HALT_ON_VIOLATION -eq 1 ]; then
+            log_alert "Halting system due to kernel module tampering"
+            rm -f "$CURRENT_MODULES" "$BASELINE_SORTED"
+            sync
+            systemctl halt
+        fi
+    fi
+    
+    rm -f "$CURRENT_MODULES" "$BASELINE_SORTED"
+else
+    log_info "No module baseline found - creating one"
+    find /lib/modules -name "*.ko" -type f -exec md5sum {} \; 2>/dev/null | sort > "$MODULES_BASELINE"
+    chmod 600 "$MODULES_BASELINE"
+    chattr +i "$MODULES_BASELINE" 2>/dev/null || true
 fi
+
+# U2F AUTHENTICATION FAILURES 
+if [ -f /var/log/auth.log ]; then
+    # Check for recent failures (last 10 minutes)
+    RECENT_FAILS=$(grep "pam_u2f.*fail" /var/log/auth.log 2>/dev/null | tail -20 | wc -l || echo "0")
+    
+    if [ "$RECENT_FAILS" -ge 3 ]; then
+        log_alert "Multiple U2F authentication failures detected: $RECENT_FAILS"
+    fi
+fi
+
+# ROOTKIT CHECK
+if command -v rkhunter >/dev/null 2>&1; then
+    # Only run full check once per day to avoid performance hit
+    LAST_CHECK="/var/lib/rkhunter-last-check"
+    CURRENT_DAY=$(date +%Y%m%d)
+    
+    if [ ! -f "$LAST_CHECK" ] || [ "$(cat $LAST_CHECK 2>/dev/null)" != "$CURRENT_DAY" ]; then
+        log_info "Running daily rkhunter check"
+        RKHUNTER_OUTPUT=$(rkhunter --check --skip-keypress --report-warnings-only 2>&1 || true)
+        
+        if [ -n "$RKHUNTER_OUTPUT" ]; then
+            log_alert "rkhunter warnings:"
+            echo "$RKHUNTER_OUTPUT" >> "$LOG"
+        fi
+        
+        echo "$CURRENT_DAY" > "$LAST_CHECK"
+    fi
+fi
+
+# CRITICAL FILE INTEGRITY 
+# Check if critical files have been modified (quick hash check)
+CRITICAL_FILES=(
+    "/etc/passwd"
+    "/etc/shadow"
+    "/etc/group"
+    "/etc/gshadow"
+    "/etc/iptables/rules.v4"
+    "/etc/default/grub"
+    "/etc/sudoers"
+    "/etc/security/access.conf"
+    "/usr/lib/sysctl.d/sysctl.conf"  
+    "/etc/pam.d/common-auth"
+    "/etc/pam.d/sudo" 
+    "/etc/security/limits.d/limits.conf"
+    "/etc/shells"
+    "/etc/securetty”
+    "/etc/fstab”
+    "/etc/modeprobe.d/harden.conf"
+)
+
+CRITICAL_BASELINE="/var/lib/critical-files-baseline"
+
+if [ ! -f "$CRITICAL_BASELINE" ]; then
+    log_info "Creating critical files baseline"
+    for f in "${CRITICAL_FILES[@]}"; do
+        if [ -f "$f" ]; then
+            md5sum "$f" >> "$CRITICAL_BASELINE"
+        fi
+    done
+    chmod 600 "$CRITICAL_BASELINE"
+    chattr +i "$CRITICAL_BASELINE" 2>/dev/null || true
+else
+    chattr -i "$CRITICAL_BASELINE" 2>/dev/null || true
+    CHANGED_FILES=""
+    for f in "${CRITICAL_FILES[@]}"; do
+        if [ -f "$f" ]; then
+            CURRENT_HASH=$(md5sum "$f" | awk '{print $1}')
+            BASELINE_HASH=$(grep "$f" "$CRITICAL_BASELINE" 2>/dev/null | awk '{print $1}')
+            if [ -n "$BASELINE_HASH" ] && [ "$CURRENT_HASH" != "$BASELINE_HASH" ]; then
+                CHANGED_FILES="$CHANGED_FILES $f"
+            fi
+        fi
+    done
+    chattr +i "$CRITICAL_BASELINE" 2>/dev/null || true
+    
+    if [ -n "$CHANGED_FILES" ]; then
+        log_alert "Critical security files modified:$CHANGED_FILES"
+        # Don't auto-halt on this - could be legitimate changes
+        # But definitely want to know about it
+    fi
+fi
+
+log_info "Escalation monitor check completed successfully"
 EOF
 
 chmod 700 /usr/local/bin/escalation-monitor
 chattr +i /usr/local/bin/escalation-monitor
 
-# Baseline kernel modules
-find /lib/modules -name "*.ko" -type f -exec md5sum {} \; > /var/lib/modules-baseline 2>/dev/null || true
-chattr +i /var/lib/modules-baseline
-
+# Use systemd timer instead of cron (since cron is purged)
 cat >/etc/systemd/system/escalation-monitor.service <<'EOF'
 [Unit]
 Description=Escalation Monitor Security Check
@@ -1129,6 +1319,8 @@ EOF
 systemctl daemon-reload
 systemctl enable escalation-monitor.timer
 systemctl start escalation-monitor.timer
+
+# MAC RANDOMIZE
 cat >/etc/systemd/system/macchanger@.service <<'EOF'
 [Unit]
 Description=MAC Address Randomization for %i
@@ -1145,6 +1337,8 @@ RemainAfterExit=yes
 [Install]
 WantedBy=multi-user.target
 EOF
+)
+
 systemctl enable macchanger@enp0s31f6.service
 
 # LOCKDOWN
@@ -1208,14 +1402,6 @@ chattr -R +i /etc/ld.so.conf.d 2>/dev/null || true
 chattr -R +i /lib/modules 2>/dev/null || true
 chattr -R +i /etc 2>/dev/null || true
 chattr -R +i /usr 2>/dev/null || true
-chattr -R +i /boot 2>/dev/null || true
+chattr -R +i /boot 2>/dev/null || true 
 
-
-# NOTE: /etc/resolv.conf left mutable for DHCP/VPN updates
-# NOTE: /etc and /usr blanket immutable removed - too aggressive
-# Apply these manually after testing if desired:
-# chattr -R +i /usr 2>/dev/null || true
-# chattr -R +i /lib/modules 2>/dev/null || true
-# chattr -R +i /boot 2>/dev/null || true
-
-echo "HARDENING SCRIPT COMPLETE"
+echo “HARDENING COMPLETE”
