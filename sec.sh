@@ -1,8 +1,8 @@
 #!/bin/bash
 
-############-WARNING-#############
-##-THIS THE SHIT KILLED BELUSHI-##
-####-TAKE IT EASY YOUNG BLOOD-####
+###############-WARNING-#################
+###-THIS THE SHIT THAT KILLED BELUSHI-###
+#########-RUN HER LOW AND SLOW-##########
 
 set -euo pipefail
 
