@@ -1,23 +1,8 @@
 #!/bin/bash
-#
-# ADVANCED HARDENING ADDITIONS
-# Run this AFTER the main hardening script
-# This script implements: kernel integrity, binary hardening, capability stripping,
-# LD_PRELOAD protection, auth rate-limiting, shell removal, package manager lockdown
-#
 
 set -euo pipefail
 
-echo "====================================================================="
-echo "ADVANCED HARDENING - PHASE 2"
-echo "====================================================================="
-
-# ============================================================================
-# 1. KERNEL & INITRAMFS INTEGRITY
-# ============================================================================
-
-echo "[1/9] Setting up kernel and initramfs integrity verification..."
-
+# KERNEL & INITRAMFS INTEGRITY
 # Create integrity database directory
 install -d -m 700 /var/lib/kernel-integrity
 
@@ -120,13 +105,7 @@ chattr +i /var/lib/kernel-integrity/kernel.sha512 2>/dev/null || true
 
 echo "[1/9] Kernel integrity verification configured."
 
-# ============================================================================
-# 2. REBUILD CRITICAL BINARIES WITH HARDENING FLAGS
-# ============================================================================
-
-echo "[2/9] Note: Binary rebuilding requires source packages and build tools."
-echo "      Since we're removing compilers, documenting hardening flags instead."
-
+# REBUILD CRITICAL BINARIES WITH HARDENING FLAGS 
 # Create documentation of expected binary hardening
 cat > /var/lib/kernel-integrity/binary-hardening-policy.txt << 'EOF'
 # Required Binary Hardening Flags (verify with checksec)
@@ -150,12 +129,7 @@ chmod 400 /var/lib/kernel-integrity/binary-hardening-policy.txt
 
 echo "[2/9] Binary hardening policy documented."
 
-# ============================================================================
-# 3. CAPABILITIES HARDENING - Strip unnecessary capabilities
-# ============================================================================
-
-echo "[3/9] Stripping unnecessary capabilities from binaries..."
-
+# CAPABILITIES HARDENING
 # Install libcap if not present (needed for setcap/getcap)
 apt install -y libcap2-bin 2>/dev/null || true
 
@@ -243,12 +217,7 @@ getcap -r / 2>/dev/null >> /var/log/capabilities-audit.log || true
 
 echo "[3/9] Capabilities stripped from dangerous binaries."
 
-# ============================================================================
-# 4. PREVENT LD_PRELOAD HIJACKING
-# ============================================================================
-
-echo "[4/9] Configuring LD_PRELOAD protection..."
-
+# PREVENT LD_PRELOAD HIJACKING
 # Method 1: Restrict /etc/ld.so.preload to root only
 touch /etc/ld.so.preload
 chown root:root /etc/ld.so.preload
@@ -331,14 +300,7 @@ cat >> /etc/audit/rules.d/privilege-escalation.rules << 'EOF'
 -w /etc/ld.so.conf.d -p wa -k ld_config
 EOF
 
-echo "[4/9] LD_PRELOAD hijacking protections applied."
-
-# ============================================================================
-# 5. RATE-LIMITING ON ALL AUTHENTICATION METHODS  
-# ============================================================================
-
-echo "[5/9] Configuring authentication rate-limiting..."
-
+# RATE-LIMITING ON ALL AUTHENTICATION METHODS
 # PAM tally2/faillock for login attempt limiting
 apt install -y libpam-modules 2>/dev/null || true
 
@@ -439,12 +401,7 @@ install -d -m 755 /var/run/faillock
 
 echo "[5/9] Authentication rate-limiting configured (3 attempts, 15 min lockout)."
 
-# ============================================================================
-# 6. REMOVE COMPILERS AND CODE INJECTORS
-# ============================================================================
-
-echo "[6/9] Removing compilers, interpreters, and injection tools..."
-
+# REMOVE COMPILERS AND CODE INJECTORS
 # Compilers and build tools
 COMPILER_PACKAGES=(
     gcc gcc-* g++ g++-* cpp cpp-*
@@ -586,12 +543,7 @@ done
 
 echo "[6/9] Compilers and injection tools removed."
 
-# ============================================================================
-# 7. REMOVE SHELLS BESIDES /bin/bash
-# ============================================================================
-
-echo "[7/9] Removing alternative shells..."
-
+# PURGE SHELLS
 # Shells to remove
 SHELL_PACKAGES=(
     zsh zsh-*
@@ -663,14 +615,7 @@ while IFS=: read -r username _ uid _ _ _ shell; do
     fi
 done < /etc/passwd
 
-echo "[7/9] Alternative shells removed. Only /bin/bash remains."
-
-# ============================================================================
 # 8. REMOVE PACKAGE MANAGERS FROM RUNTIME
-# ============================================================================
-
-echo "[8/9] Disabling package managers for runtime..."
-
 # Create a maintenance script to re-enable package managers
 cat > /usr/local/sbin/enable-package-manager << 'EOF'
 #!/bin/bash
@@ -772,15 +717,8 @@ systemctl mask apt-daily.timer apt-daily-upgrade.timer apt-daily.service apt-dai
 # Now lock apt/dpkg
 /usr/local/sbin/disable-package-manager
 
-echo "[8/9] Package managers disabled. Use enable-package-manager for maintenance."
-
-# ============================================================================
-# 9. REMOVE UNNECESSARY LIBRARIES
-# ============================================================================
-
-echo "[9/9] Cleaning up unnecessary libraries..."
-
-# Remove development libraries
+# REMOVE UNNECESSARY LIBRARIES
+# Development libraries
 DEV_LIB_PACKAGES=(
     '*-dev'
     '*-dbg'
@@ -831,12 +769,7 @@ done
 # Re-lock package manager
 /usr/local/sbin/disable-package-manager 2>/dev/null || true
 
-echo "[9/9] Unnecessary libraries cleaned."
-
-# ============================================================================
 # FINAL LOCKDOWN
-# ============================================================================
-
 # Lock down the new files we created
 chattr +i /usr/local/sbin/verify-kernel-integrity 2>/dev/null || true
 chattr +i /usr/local/sbin/update-kernel-hashes 2>/dev/null || true
@@ -861,3 +794,5 @@ sha512sum /boot/vmlinuz-* > /var/lib/kernel-integrity/kernel.sha512
 sha512sum /boot/initrd.img-* >> /var/lib/kernel-integrity/kernel.sha512
 sha512sum /boot/grub/grub.cfg >> /var/lib/kernel-integrity/kernel.sha512
 chattr +i /var/lib/kernel-integrity/kernel.sha512 2>/dev/null || true
+
+echo "ADVANCED HARDENING COMPLETE"
