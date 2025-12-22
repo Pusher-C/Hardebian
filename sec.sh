@@ -352,7 +352,6 @@ chown root:root /etc/security/u2f_keys
 chattr +i /etc/security/u2f_keys
 mkdir -p /var/log/faillock
 chmod 0700 /var/log/faillock
-sed -i '1iauth      sufficient  pam_u2f.so authfile=/etc/conf' /usr/lib/pam.d/*
 rm -f /etc/pam.d/remote
 rm -f /etc/pam.d/cron
 
@@ -387,27 +386,27 @@ EOF
 
 cat > /etc/pam.d/common-auth <<'EOF'
 #%PAM-1.0
-auth    required     pam_faildelay.so    delay=3000000
-auth    required      pam_faillock.so     preauth silent deny=3 unlock_time=900 fail_interval=900
-auth    [success=1 default=ignore]  pam_u2f.so authfile=/etc/security/u2f_keys/%u cue nouserok
-auth    requisite     pam_deny.so
-auth    required      pam_faillock.so     authfail deny=3 unlock_time=900 fail_interval=900EOF
+auth      required    pam_faildelay.so delay=3000000
+auth      required    pam_faillock.so preauth silent deny=3 unlock_time=900 fail_interval=900
+auth     [success=1 default=ignore] pam_u2f.so authfile=/etc/security/u2f_keys/%u cue nouserok
+auth      requisite   pam_deny.so
+auth      required    pam_faillock.so authfail deny=3 unlock_time=900 fail_interval=900EOF
 
 cat >/etc/pam.d/common-account <<'EOF'
 #%PAM-1.0
-account   required   pam_access.so       accessfile=/etc/security/access.conf
+account   required    pam_access.so accessfile=/etc/security/access.conf
 account   required    pam_faillock.so
 account   required    pam_nologin.so
 EOF
 
 cat >/etc/pam.d/common-password <<'EOF'
 #%PAM-1.0
-password  requisite  pam_deny.so
+password  requisite   pam_deny.so
 EOF
 
 cat >/etc/pam.d/common-session <<'EOF'
 #%PAM-1.0
-session   required   pam_limits.so
+session   required    pam_limits.so
 session   required    pam_env.so
 session   optional    pam_systemd.so
 session   optional    pam_umask.so umask=077
@@ -427,88 +426,64 @@ EOF
 
 cat >/etc/pam.d/sudo <<'EOF'
 #%PAM-1.0
-auth       required     pam_u2f.so      authfile=/etc/security/u2f_keys/%u cue
-auth       required     pam_faillock.so preauth silent deny=3 unlock_time=900
-account    include      common-account
-session    required     pam_limits.so
-session    include      common-session
+auth       required   pam_u2f.so authfile=/etc/security/u2f_keys/%u cue
+auth       required   pam_faillock.so preauth silent deny=3 unlock_time=900
+account    include    common-account
+session    required   pam_limits.so
+session    include    common-session
 EOF
 
 cat >/etc/pam.d/sudo-i <<'EOF'
 #%PAM-1.0
-auth       required     pam_u2f.so      authfile=/etc/security/u2f_keys/%u cue
-auth       required     pam_faillock.so preauth silent deny=3 unlock_time=900
-account    include      common-account
-session    required     pam_limits.so
-session    include      common-session
+auth       required   pam_u2f.so authfile=/etc/security/u2f_keys/%u cue
+auth       required   pam_faillock.so preauth silent deny=3 unlock_time=900
+account    include    common-account
+session    required   pam_limits.so
+session    include    common-session
 EOF
 
 cat >/etc/pam.d/su <<'EOF'
 #%PAM-1.0
-auth       required     pam_u2f.so      authfile=/etc/security/u2f_keys/%u cue
-auth       required     pam_faillock.so preauth silent deny=3 unlock_time=900
-account    include      common-account
-session    required     pam_limits.so
-session    include      common-session
+auth       required   pam_u2f.so authfile=/etc/security/u2f_keys/%u cue
+auth       required   pam_faillock.so preauth silent deny=3 unlock_time=900
+account    include    common-account
+session    required   pam_limits.so
+session    include    common-session
 EOF
 
 cat >/etc/pam.d/su-l <<'EOF'
 #%PAM-1.0
-auth       required     pam_u2f.so      authfile=/etc/security/u2f_keys/%u cue
-auth       required     pam_faillock.so preauth silent deny=3 unlock_time=900
-account    include      common-account
-session    required     pam_limits.so
-session    include      common-session
+auth       required    pam_u2f.so      authfile=/etc/security/u2f_keys/%u cue
+auth       required    pam_faillock.so preauth silent deny=3 unlock_time=900
+account    include     common-account
+session    required    pam_limits.so
+session    include     common-session
 EOF
 
 cat >/etc/pam.d/sshd <<'EOF'
 #%PAM-1.0
-auth      required    pam_deny.so
-account   required    pam_deny.so
-password  required    pam_deny.so
-session   required    pam_deny.so
+auth       required    pam_deny.so
+account    required    pam_deny.so
+password   required    pam_deny.so
+session    required    pam_deny.so
 EOF
 
 cat >/etc/pam.d/other <<'EOF'
 #%PAM-1.0
-auth      required    pam_deny.so
-account   required    pam_deny.so
-password  required    pam_deny.so
-session   required    pam_deny.so
+auth       required    pam_deny.so
+account    required    pam_deny.so
+password   required    pam_deny.so
+session    required    pam_deny.so
 EOF
 
 cat >/etc/pam.d/login <<'EOF'
 #%PAM-1.0
-auth      required     pam_securetty.so
-auth       required     pam_nologin.so
-auth       include      common-auth
-account    include      common-account
-session    required     pam_loginuid.so
-session    include      common-session
-EOF
-
-cat >/etc/pam.d/lightdm <<'EOF'
-#%PAM-1.0
-auth      required      pam_faillock.so preauth deny=3 unlock_time=900
-auth      sufficient    pam_u2f.so authfile=/etc/security/u2f_keys
-auth      [default=die] pam_faillock.so authfail deny=3 unlock_time=900
-auth      requisite     pam_nologin.so
-auth      requisite     pam_deny.so
-account   include       common-account
-password  include       common-password
-session   include       common-session
-EOF
-
-cat >/etc/pam.d/lightdm-greeter <<'EOF'
-#%PAM-1.0
-auth      required      pam_faillock.so preauth deny=3 unlock_time=900
-auth      sufficient    pam_u2f.so authfile=/etc/security/u2f_keys
-auth      [default=die] pam_faillock.so authfail deny=3 unlock_time=900
-auth      requisite     pam_nologin.so
-auth      requisite     pam_deny.so
-account   include       common-account
-password  include       common-password
-session   include       common-session
+auth       required    pam_securetty.so
+auth       required    pam_nologin.so
+auth       include     common-auth
+account    include     common-account
+session    required    pam_loginuid.so
+session    include     common-session
 EOF
 
 cat >/etc/pam.d/newusers <<'EOF'
@@ -589,14 +564,14 @@ order hosts,bind
 EOF
 
 cat >/etc/security/limits.d/limits.conf <<'EOF'
-*           hard    nproc      2048
-*            -      maxlogins    1
-*             -      maxsyslogins  1
-dev           -      maxlogins    1
-dev           -      maxsyslogins  1
-root         -      maxlogins  5
-root        hard    nproc      65536
-*           hard    core       0
+*           hard    nproc         2048
+*            -      maxlogins     1
+*            -      maxsyslogins  1
+dev          -      maxlogins     1
+dev          -      maxsyslogins  1
+root         -      maxlogins     5
+root        hard    nproc         65536
+*           hard    core          0
 EOF
 
 echo "ProcessSizeMax=0
@@ -643,133 +618,63 @@ mkdir -p /usr/lib/sysctl.d
 cat > /usr/lib/sysctl.d/sysctl.conf << 'EOF'
 # Restrict kernel pointer exposure
 kernel.kptr_restrict = 2
-
-# Restrict dmesg to root only
 kernel.dmesg_restrict = 1
-
-# Restrict perf_event (performance counters - side-channel risk)
 kernel.perf_event_paranoid = 3
-
-# Disable kexec (loading new kernel at runtime)
 kernel.kexec_load_disabled = 1
-
-# Restrict eBPF to CAP_BPF (root)
 kernel.unprivileged_bpf_disabled = 1
 net.core.bpf_jit_harden = 2
-
-# Disable SysRq (magic keys)
 kernel.sysrq = 0
-
-# Restrict ptrace to parent processes only (breaks some debuggers, but secure)
 kernel.yama.ptrace_scope = 2
-
-# ASLR: Full randomization
 kernel.randomize_va_space = 2
-
-# Restrict user namespaces (browser sandboxing - keep enabled but restricted)
-# Note: Chromium/Firefox need this for sandboxing, so we allow but log
 kernel.unprivileged_userns_clone = 1
-
-# Core dumps: disabled
 kernel.core_pattern = |/bin/false
 fs.suid_dumpable = 0
-
-# Symlink/hardlink protections
 fs.protected_symlinks = 1
 fs.protected_hardlinks = 1
-
-# FIFO/regular file protections (prevent attacks via shared dirs)
 fs.protected_fifos = 2
 fs.protected_regular = 2
-
-# Disable IP forwarding (not a router)
 net.ipv4.ip_forward = 0
-
-# Disable source routing (prevent spoofed packets)
 net.ipv4.conf.all.accept_source_route = 0
 net.ipv4.conf.default.accept_source_route = 0
-
-# Disable ICMP redirects (MITM prevention)
 net.ipv4.conf.all.accept_redirects = 0
 net.ipv4.conf.default.accept_redirects = 0
 net.ipv4.conf.all.secure_redirects = 0
 net.ipv4.conf.default.secure_redirects = 0
 net.ipv4.conf.all.send_redirects = 0
 net.ipv4.conf.default.send_redirects = 0
-
-# Enable reverse path filtering (strict mode - anti-spoofing)
 net.ipv4.conf.all.rp_filter = 1
 net.ipv4.conf.default.rp_filter = 1
-
-# Log martian packets (impossible addresses)
 net.ipv4.conf.all.log_martians = 1
 net.ipv4.conf.default.log_martians = 1
-
-# Ignore ICMP echo requests (ping)
 net.ipv4.icmp_echo_ignore_all = 1
-
-# Ignore bogus ICMP error responses
 net.ipv4.icmp_ignore_bogus_error_responses = 1
-
-# SYN flood protection
 net.ipv4.tcp_syncookies = 1
 net.ipv4.tcp_max_syn_backlog = 4096
 net.ipv4.tcp_synack_retries = 2
 net.ipv4.tcp_syn_retries = 3
-
-# TIME-WAIT assassination protection
 net.ipv4.tcp_rfc1337 = 1
-
-# Disable TCP timestamps (fingerprinting prevention)
 net.ipv4.tcp_timestamps = 0
-
-# Disable SACK (potential vulnerabilities, minor perf hit)
 net.ipv4.tcp_sack = 0
 net.ipv4.tcp_dsack = 0
 net.ipv4.tcp_fack = 0
-
-# Restrict local port range (reduce fingerprinting)
 net.ipv4.ip_local_port_range = 32768 60999
-
-# Restrict unprivileged ports
 net.ipv4.ip_unprivileged_port_start = 1024
-
 net.ipv6.conf.all.disable_ipv6 = 1
 net.ipv6.conf.default.disable_ipv6 = 1
 net.ipv6.conf.lo.disable_ipv6 = 1
-
-# Connection tracking max (adjust if needed for heavy browsing)
 net.netfilter.nf_conntrack_max = 131072
-
-# Timeout tuning (security vs usability balance)
 net.netfilter.nf_conntrack_tcp_timeout_established = 3600
 net.netfilter.nf_conntrack_tcp_timeout_time_wait = 60
-
-# Restrict mmap minimum address (NULL deref protection)
 vm.mmap_min_addr = 65536
-
-# Randomize mmap base
 vm.mmap_rnd_bits = 32
 vm.mmap_rnd_compat_bits = 16
-
-# Restrict kernel logs in console
 kernel.printk = 3 3 3 3
-
-# Disable magic sysrq completely
 kernel.sysrq = 0
-
-# OOM killer: prefer killing processes over system panic
 vm.panic_on_oom = 0
 vm.oom_kill_allocating_task = 1
-
-# Swappiness: minimize swap usage (reduce data leakage to disk)
 vm.swappiness = 1
-
-# Dirty ratio: limit dirty pages (reduce data in RAM waiting to write)
 vm.dirty_ratio = 5
 vm.dirty_background_ratio = 3
-
-EOF
 EOF
 sysctl --system
 
@@ -993,6 +898,8 @@ blacklist iwlmvm
 install iwlmvm /bin/false
 blacklist iwldvm
 install iwldvm /bin/false
+blacklist ipv6
+install ipv6 /bin/false
 EOF
 
 # FSTAB 
