@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # PRE-CONFIG 
-apt install -y extrepo iptables iptables-persistent netfilter-persistent
+apt install -y extrepo iptables iptables-persistent netfilter-persistent --no-install-recommends
 extrepo enable librewolf
 apt modernize-sources
 apt update
@@ -292,7 +292,9 @@ Pin-Priority: -1
 EOF
 
 # PACKAGE INSTALLATION
-apt install -y apparmor apparmor-utils apparmor-profiles apparmor-profiles-extra pamu2fcfg libpam-u2f rsyslog chrony libpam-tmpdir needrestart acct rkhunter chkrootkit debsums unzip patch alsa-utils pavucontrol pipewire pipewire-audio-client-libraries pipewire-pulse wireplumber lynis macchanger unhide tcpd fonts-liberation opensnitch python3-opensnitch* libxfce4ui-utils xfce4-panel xfce4-session xfce4-settings xfconf xfdesktop4 xfwm4 xserver-xorg xinit xserver-xorg-legacy xfce4-pulseaudio-plugin xfce4-whiskermenu-plugin gnome-terminal gnome-brave-icon-theme breeze-gtk-theme bibata-cursor-theme gdebi-core
+apt install -y apparmor apparmor-utils apparmor-profiles apparmor-profiles-extra rsyslog chrony libpam-tmpdir acct rkhunter chkrootkit debsums unzip patch pavucontrol pipewire pipewire-audio-client-libraries pipewire-pulse wireplumber lynis macchanger unhide tcpd fonts-liberation 
+
+apt install -y xfce4 libxfce4ui-utils xfce4-panel xfce4-session xfce4-settings xfconf xfdesktop4 xfwm4 xserver-xorg xinit xserver-xorg-legacy xfce4-pulseaudio-plugin xfce4-whiskermenu-plugin gnome-terminal gnome-brave-icon-theme breeze-gtk-theme bibata-cursor-theme gdebi-core opensnitch python3-opensnitch* --no-install-recommends
 
 systemctl enable acct
 systemctl start acct
@@ -390,7 +392,8 @@ auth      required    pam_faildelay.so delay=3000000
 auth      required    pam_faillock.so preauth silent deny=3 unlock_time=900 fail_interval=900
 auth     [success=1 default=ignore] pam_u2f.so authfile=/etc/security/u2f_keys/%u cue nouserok
 auth      requisite   pam_deny.so
-auth      required    pam_faillock.so authfail deny=3 unlock_time=900 fail_interval=900EOF
+auth      required    pam_faillock.so authfail deny=3 unlock_time=900 fail_interval=900
+EOF
 
 cat >/etc/pam.d/common-account <<'EOF'
 #%PAM-1.0
