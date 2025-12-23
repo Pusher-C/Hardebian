@@ -1250,7 +1250,6 @@ RemainAfterExit=yes
 [Install]
 WantedBy=multi-user.target
 EOF
-)
 
 systemctl enable macchanger@enp0s31f6.service
 
