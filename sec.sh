@@ -21,6 +21,8 @@ systemctl mask ssh.service ssh.socket telnet.socket inetd.service xinetd.service
 cat >/etc/apt/apt.conf.d/98-hardening <<'EOF'
 APT::Get::AllowUnauthenticated "false";
 Acquire::http::AllowRedirect "false";
+APT::Install-Recommends "false";
+APT::Install-Suggests "false";
 EOF
 apt update
 
@@ -37,17 +39,13 @@ iptables -t nat -Z
 iptables -t mangle -F
 iptables -t mangle -X
 iptables -t mangle -Z
-iptables -N UDP 2>/dev/null || iptables -F UDP
-iptables -N TCP 2>/dev/null || iptables -F TCP
 iptables -P INPUT DROP
 iptables -P FORWARD DROP
 iptables -P OUTPUT ACCEPT
 iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 iptables -A INPUT -i lo -j ACCEPT
 iptables -A INPUT -m conntrack --ctstate INVALID -j DROP
-iptables -A INPUT -i wg0-mullvad -j ACCEPT
-iptables -A INPUT -p udp -m conntrack --ctstate NEW -j UDP
-iptables -A INPUT -p tcp --syn -m conntrack --ctstate NEW -j TCP
+iptables -A INPUT -i wg0 -j ACCEPT
 iptables -A INPUT -p udp -j DROP
 iptables -A INPUT -p tcp -j DROP
 iptables -A INPUT -j DROP
@@ -62,7 +60,7 @@ ip6tables-save > /etc/iptables/rules.v6
 netfilter-persistent save
 
 # PACKAGE REMOVAL/RESTRICTING
-apt purge -y zram* pci* pmount* cron* avahi* bc bind9* dns* fastfetch fonts-noto* fprint* dhcp* lxc* docker* podman* xen* bochs* uml* vagrant* ssh* openssh* samba* winbind* qemu* libvirt* virt* avahi* cup* print* rsync* nftables* virtual* sane* rpc* bind* nfs* blue* spee* espeak* mobile* wireless* inet* util-linux-locales tasksel* vim* os-prober* netcat* gcc g++ gdb lldb strace* ltrace* build-essential automake autoconf libtool cmake ninja-build meson 2>/dev/null || true
+apt purge -y zram* pci* pmount* cron* avahi* bc bind9* dns* fastfetch fonts-noto* fprint* dhcp* lxc* docker* podman* xen* bochs* uml* vagrant* ssh* openssh* samba* winbind* qemu* libvirt* virt* avahi* cup* print* rsync* nftables* virtual* sane* rpc* bind* nfs* blue* spee* espeak* mobile* wireless* inet* util-linux-locales tasksel* vim* os-prober* netcat* gcc g++ gdb lldb strace* ltrace* build-essential automake autoconf libtool cmake ninja-build meson traceroute
 
 install -d /etc/apt/preferences.d
 cat >/etc/apt/preferences.d/deny.pref <<'EOF'
@@ -289,19 +287,21 @@ Pin-Priority: -1
 Package: ruby*
 Pin: release *
 Pin-Priority: -1
+
+Package: traceroute*
+Pin: release *
+Pin-Priority: -1
 EOF
 
 # PACKAGE INSTALLATION
-apt install -y apparmor apparmor-utils apparmor-profiles apparmor-profiles-extra rsyslog chrony libpam-tmpdir acct rkhunter chkrootkit debsums unzip patch pavucontrol pipewire pipewire-audio-client-libraries pipewire-pulse wireplumber lynis macchanger unhide tcpd fonts-liberation 
-
-apt install -y xfce4 libxfce4ui-utils xfce4-panel xfce4-session xfce4-settings xfconf xfdesktop4 xfwm4 xserver-xorg xinit xserver-xorg-legacy xfce4-pulseaudio-plugin xfce4-whiskermenu-plugin gnome-terminal gnome-brave-icon-theme breeze-gtk-theme bibata-cursor-theme gdebi-core opensnitch python3-opensnitch* --no-install-recommends
+apt install -y apparmor apparmor-utils apparmor-profiles apparmor-profiles-extra rsyslog chrony libpam-tmpdir acct rkhunter chkrootkit debsums unzip patch pavucontrol pipewire pipewire-audio-client-libraries pipewire-pulse wireplumber lynis macchanger unhide tcpd fonts-liberation xfce4 libxfce4ui-utils xfce4-panel xfce4-session xfce4-settings xfconf xfdesktop4 xfwm4 xserver-xorg xinit xserver-xorg-legacy xfce4-pulseaudio-plugin xfce4-whiskermenu-plugin gnome-terminal gnome-brave-icon-theme breeze-gtk-theme bibata-cursor-theme gdebi-core opensnitch python3-opensnitch*
 
 systemctl enable acct
 systemctl start acct
 
 systemctl enable apparmor
 systemctl start apparmor
-aa-enforce /etc/apparmor.d/* 2>/dev/null || true
+aa-enforce /etc/apparmor.d/*
 
 # AUDITD
 apt install -y auditd audispd-plugins
@@ -485,6 +485,7 @@ auth       required    pam_securetty.so
 auth       required    pam_nologin.so
 auth       include     common-auth
 account    include     common-account
+session    required    pam_limits.so
 session    required    pam_loginuid.so
 session    include     common-session
 EOF
@@ -512,30 +513,6 @@ auth      include     runuser
 session   include     runuser
 EOF
 
-# OVH
-apt install -y git
-git clone https://github.com/ovh/debian-cis.git
-cd debian-cis
-cp debian/default /etc/default/cis-hardening
-sed -i "s#CIS_LIB_DIR=.*#CIS_LIB_DIR='$(pwd)'/lib#" /etc/default/cis-hardening
-sed -i "s#CIS_CHECKS_DIR=.*#CIS_CHECKS_DIR='$(pwd)'/bin/hardening#" /etc/default/cis-hardening
-sed -i "s#CIS_CONF_DIR=.*#CIS_CONF_DIR='$(pwd)'/etc#" /etc/default/cis-hardening
-sed -i "s#CIS_TMP_DIR=.*#CIS_TMP_DIR='$(pwd)'/tmp#" /etc/default/cis-hardening
-sed -i "s#CIS_VERSIONS_DIR=.*#CIS_VERSIONS_DIR='$(pwd)'/versions#" /etc/default/cis-hardening
-bin/hardening.sh --audit-all --allow-unsupported-distribution || true
-bin/hardening.sh --set-hardening-level 5 --allow-unsupported-distribution || true
-# Remove checks that conflict with our setup
-rm -f bin/hardening/disable_print_server.sh
-rm -f bin/hardening/disable_avahi_server.sh
-rm -f bin/hardening/disable_xwindow_system.sh
-rm -f bin/hardening/install_tripwire.sh
-rm -f bin/hardening/install_syslog-ng.sh
-bin/hardening.sh --apply --allow-unsupported-distribution || true
-bin/hardening.sh --apply --allow-unsupported-distribution || true
-bin/hardening.sh --apply --allow-unsupported-distribution || true
-apt purge -y ssh* openssh* libssh* 2>/dev/null || true
-cd
-
 # SUDO
 cat >/etc/sudoers <<'EOF'
 Defaults timestamp_timeout=5
@@ -559,7 +536,7 @@ EOF
 
 passwd -l root
 echo "needs_root_rights=no" >> /etc/X11/Xwrapper.config
-dpkg-reconfigure -f noninteractive xserver-xorg-legacy || true
+dpkg-reconfigure xserver-xorg-legacy
 
 cat >/etc/host.conf <<'EOF'
 multi on
@@ -572,7 +549,8 @@ cat >/etc/security/limits.d/limits.conf <<'EOF'
 *            -      maxsyslogins  1
 dev          -      maxlogins     1
 dev          -      maxsyslogins  1
-root         -      maxlogins     5
+root         -      maxlogins     1
+root         -      maxsyslogin   1
 root        hard    nproc         65536
 *           hard    core          0
 EOF
@@ -1005,6 +983,7 @@ systemctl enable opensnitchd.service
 systemctl start opensnitchd.service
 
 # Install Blocklists
+apt install git 
 git clone --depth 1 https://github.com/DXC-0/Respect-My-Internet.git
 cd Respect-My-Internet
 chmod +x install.sh
