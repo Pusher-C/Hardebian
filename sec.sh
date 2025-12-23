@@ -390,7 +390,7 @@ cat > /etc/pam.d/common-auth <<'EOF'
 #%PAM-1.0
 auth      required    pam_faildelay.so delay=3000000
 auth      required    pam_faillock.so preauth silent deny=3 unlock_time=900 fail_interval=900
-auth     [success=1 default=ignore] pam_u2f.so authfile=/etc/security/u2f_keys/%u cue nouserok
+auth     [success=1 default=ignore] pam_u2f.so authfile=/etc/security/u2f_keys
 auth      requisite   pam_deny.so
 auth      required    pam_faillock.so authfail deny=3 unlock_time=900 fail_interval=900
 EOF
@@ -429,7 +429,7 @@ EOF
 
 cat >/etc/pam.d/sudo <<'EOF'
 #%PAM-1.0
-auth       required   pam_u2f.so authfile=/etc/security/u2f_keys/%u cue
+auth       required   pam_u2f.so authfile=/etc/security/u2f_keys
 auth       required   pam_faillock.so preauth silent deny=3 unlock_time=900
 account    include    common-account
 session    required   pam_limits.so
@@ -438,7 +438,7 @@ EOF
 
 cat >/etc/pam.d/sudo-i <<'EOF'
 #%PAM-1.0
-auth       required   pam_u2f.so authfile=/etc/security/u2f_keys/%u cue
+auth       required   pam_u2f.so authfile=/etc/security/u2f_keys
 auth       required   pam_faillock.so preauth silent deny=3 unlock_time=900
 account    include    common-account
 session    required   pam_limits.so
@@ -447,7 +447,7 @@ EOF
 
 cat >/etc/pam.d/su <<'EOF'
 #%PAM-1.0
-auth       required   pam_u2f.so authfile=/etc/security/u2f_keys/%u cue
+auth       required   pam_u2f.so authfile=/etc/security/u2f_keys
 auth       required   pam_faillock.so preauth silent deny=3 unlock_time=900
 account    include    common-account
 session    required   pam_limits.so
@@ -456,7 +456,7 @@ EOF
 
 cat >/etc/pam.d/su-l <<'EOF'
 #%PAM-1.0
-auth       required    pam_u2f.so      authfile=/etc/security/u2f_keys/%u cue
+auth       required    pam_u2f.so      authfile=/etc/security/u2f_keys
 auth       required    pam_faillock.so preauth silent deny=3 unlock_time=900
 account    include     common-account
 session    required    pam_limits.so
