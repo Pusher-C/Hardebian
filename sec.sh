@@ -314,10 +314,7 @@ Pin-Priority: -1
 EOF
 
 # GNOME PACKAGE INSTALLATION
-apt install -y gnome-session gdm3 gnome-shell gnome-terminal gnome-control-center gnome-tweaks gnome-system-monitor gnome-text-editor dbus-x11 xdg-utils librewolf gnome-shell-extensions gnome-shell-extension-appindicator gnome-shell-extension-caffeine gnome-shell-extension-user-theme gnome-shell-extension-runcat gnome-shell-extension-dash-to-panel gnome-shell-extension-arc-menu gnome-shell-extension-manager pavucontrol pipewire pipewire-audio-client-libraries pipewire-pulse wireplumber unhide fonts-liberation libxfce4ui-utils xfce4-panel xfce4-session xfce4-settings xfconf xfdesktop4 xfwm4 xserver-xorg xinit xserver-xorg-legacy xfce4-pulseaudio-plugin xfce4-whiskermenu-plugin xfce4-terminal gnome-brave-icon-theme breeze-gtk-theme bibata-cursor-theme gdebi timeshift qt5ct opensnitch* python3-opensnitch* selinux-basics selinux-policy-default
-
-selinux-activate
-selinux-config-enforcing
+apt install -y gnome-session gdm3 gnome-shell gnome-terminal gnome-control-center gnome-tweaks gnome-system-monitor gnome-text-editor dbus-x11 xdg-utils librewolf gnome-shell-extensions gnome-shell-extension-appindicator gnome-shell-extension-caffeine gnome-shell-extension-user-theme gnome-shell-extension-runcat gnome-shell-extension-dash-to-panel gnome-shell-extension-arc-menu gnome-shell-extension-manager pavucontrol pipewire pipewire-audio-client-libraries pipewire-pulse wireplumber unhide fonts-liberation libxfce4ui-utils xfce4-panel xfce4-session xfce4-settings xfconf xfdesktop4 xfwm4 xserver-xorg xinit xserver-xorg-legacy xfce4-pulseaudio-plugin xfce4-whiskermenu-plugin xfce4-terminal gnome-brave-icon-theme breeze-gtk-theme bibata-cursor-theme gdebi timeshift qt5ct opensnitch* python3-opensnitch*
 
 # PAM/U2F
 pamu2fcfg -u dev > /etc/security/u2f_keys
