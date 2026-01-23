@@ -67,7 +67,7 @@ EOF
 
 # FIREWALL
 
-apt purge -y nftables 2>/dev/null || true
+apt purge -y nftables
 systemctl enable netfilter-persistent
 service netfilter-persistent start
 iptables -F
@@ -82,9 +82,9 @@ iptables -t mangle -Z
 iptables -P INPUT DROP
 iptables -P FORWARD DROP
 iptables -P OUTPUT ACCEPT
-iptables -A INPUT -m conntrack –ctstate RELATED,ESTABLISHED -j ACCEPT
+iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 iptables -A INPUT -i lo -j ACCEPT
-iptables -A INPUT -m conntrack –ctstate INVALID -j DROP
+iptables -A INPUT -m conntrack --ctstate INVALID -j DROP
 iptables -A INPUT -j DROP
 ip6tables -F
 ip6tables -X
@@ -94,7 +94,7 @@ ip6tables -P FORWARD DROP
 ip6tables -P OUTPUT DROP
 iptables-save > /etc/iptables/rules.v4
 ip6tables-save > /etc/iptables/rules.v6
-netfilter-persistent save
+netfilter-persistent savesave
 
 # PACKAGE INSTALLATION
 
