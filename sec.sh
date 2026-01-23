@@ -6,10 +6,10 @@ set -euo pipefail
 
 # PRE-CONFIG
 
-apt install -y extrepo iptables iptables-persistent netfilter-persistent –no-install-recommends
+apt install -y extrepo iptables iptables-persistent netfilter-persistent
 extrepo enable librewolf
 apt update
-apt install -y librewolf –no-install-recommends
+apt install -y librewolf
 
 # SYSTEMD HARDENING
 
