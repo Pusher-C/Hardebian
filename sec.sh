@@ -101,18 +101,19 @@ netfilter-persistent savesave
 apt install -y gnome-session gdm3 gnome-shell gnome-terminal gnome-control-center gnome-tweaks gnome-system-monitor gnome-text-editor dbus-x11 xdg-utils librewolf gnome-shell-extensions gnome-shell-extension-appindicator gnome-shell-extension-caffeine gnome-shell-extension-user-theme gnome-shell-extension-runcat gnome-shell-extension-dash-to-panel gnome-shell-extension-arc-menu gnome-shell-extension-manager pavucontrol pipewire pipewire-audio-client-libraries pipewire-pulse wireplumber unhide fonts-liberation libxfce4ui-utils xfce4-panel xfce4-session xfce4-settings xfconf xfdesktop4 xfwm4 xserver-xorg xinit xserver-xorg-legacy xfce4-pulseaudio-plugin xfce4-whiskermenu-plugin xfce4-terminal gnome-brave-icon-theme breeze-gtk-theme bibata-cursor-theme gdebi timeshift qt5ct qtwayland5 opensnitch* python3-opensnitch*
 
 # PAM/U2F
-
+# PAM/U2F
 pamu2fcfg -u dev > /etc/security/u2f_keys
 chmod 0400 /etc/security/u2f_keys
 chown root:root /etc/security/u2f_keys
 mkdir -p /var/log/faillock
 chmod 0700 /var/log/faillock
-rm -f /etc/pam.d/remote 2>/dev/null || true
-rm -f /etc/pam.d/cron 2>/dev/null || true
+rm -f /etc/pam.d/remote
+rm -f /etc/pam.d/cron
 
+# Faillock configuration
 cat > /etc/security/faillock.conf << 'EOF'
-deny = 5
-unlock_time = 600
+deny = 3
+unlock_time = 900
 fail_interval = 900
 silent
 EOF
@@ -160,7 +161,6 @@ EOF
 cat > /etc/pam.d/gdm-password << 'EOF'
 #%PAM-1.0
 auth      requisite   pam_nologin.so
-auth      required    pam_succeed_if.so user != root quiet_success
 auth      required    pam_faildelay.so delay=2000000
 auth      required    pam_faillock.so preauth silent deny=5 unlock_time=600 fail_interval=900
 auth      [success=1 default=ignore] pam_u2f.so authfile=/etc/security/u2f_keys cue
@@ -291,7 +291,7 @@ password  required    pam_deny.so
 session   required    pam_deny.so
 EOF
 
-cat > /usr/lib/pam.d/systemd-user << 'EOF'
+cat > /etc/pam.d/systemd-user << 'EOF'
 #%PAM-1.0
 account   include     common-account
 session   required    pam_limits.so
@@ -304,7 +304,6 @@ chmod 644 /etc/pam.d/*
 chown root:root /etc/pam.d/*
 
 # SUDO
-
 cat >/etc/sudoers <<'EOF'
 Defaults env_reset
 Defaults !setenv
@@ -321,13 +320,10 @@ Defaults !env_editor
 
 dev  ALL=(ALL) /usr/sbin/, /usr/bin/
 EOF
-
 chmod 0440 /etc/sudoers
-chmod -R 0440 /etc/sudoers.d 2>/dev/null || true
+chmod -R 0440 /etc/sudoers.d
 
 # MISC HARDENING
-
-echo "Applying system hardening…"
 cat >/etc/shells <<'EOF'
 /bin/bash
 EOF
@@ -347,7 +343,6 @@ root         -      maxlogins     2
 root         -      maxsyslogin   2
 root        hard    nproc         65536
 *           hard    core          0
-
 EOF
 
 echo "ProcessSizeMax=0
@@ -357,8 +352,8 @@ echo "ulimit -c 0" >> /etc/profile
 sed -i 's/^ENCRYPT_METHOD.*/ENCRYPT_METHOD YESCRYPT/' /etc/login.defs
 sed -i 's/^UID_MIN.*/UID_MIN 1000/' /etc/login.defs
 sed -i 's/^UID_MAX.*/UID_MAX 60000/' /etc/login.defs
-sed -i 's/^SHELL=.*/SHELL=/usr/sbin/nologin/' /etc/default/useradd
-sed -i 's/^DSHELL=.*/DSHELL=/usr/sbin/nologin/' /etc/adduser.conf
+sed -i 's/^SHELL=.*/SHELL=\/usr\/sbin\/nologin/' /etc/default/useradd
+sed -i 's/^DSHELL=.*/DSHELL=\/usr\/sbin\/nologin/' /etc/adduser.conf
 echo "UMASK 077" >> /etc/login.defs
 echo "umask 077" >> /etc/profile
 echo "umask 077" >> /etc/bash.bashrc
@@ -367,15 +362,12 @@ echo "ALL: ALL" > /etc/hosts.deny
 chmod 644 /etc/hosts.allow
 chmod 644 /etc/hosts.deny
 
-cat > /etc/profile.d/autologout.sh <<'EOF'
-TMOUT=900
-readonly TMOUT
-export TMOUT
-EOF
-
 cat > /etc/security/access.conf << EOF
-+:dev:ALL
++:dev:LOCAL
+-:dev:ALL EXCEPT LOCAL
 +:root:LOCAL
+-:root:ALL EXCEPT LOCAL
+-:ALL:REMOTE
 -:ALL:ALL
 EOF
 chmod 644 /etc/security/access.conf
@@ -459,7 +451,7 @@ kernel.unprivileged_userns_clone = 0
 dev.tty.legacy_tiocsti = 0
 dev.tty.ldisc_autoload = 0
 EOF
-sysctl –system
+sysctl --system
 
 # MODULES
 
@@ -686,16 +678,12 @@ EOF
 
 cp /etc/fstab /etc/fstab.bak
 
-if ! grep -q "proc.*hidepid=2" /etc/fstab; then
-cat >> /etc/fstab << 'EOF'
-proc     /proc      proc      noatime,nodev,nosuid,noexec,hidepid=2,gid=proc    0 0
+echo "proc     /proc      proc      noatime,nodev,nosuid,noexec,hidepid=2,gid=proc    0 0
 tmpfs    /tmp       tmpfs     size=8G,noatime,nodev,nosuid,noexec,mode=1777     0 0
 tmpfs    /var/tmp   tmpfs     size=4G,noatime,nodev,nosuid,noexec,mode=1777     0 0
-tmpfs    /dev/shm   tmpfs     size=2G,noatime,nodev,nosuid,noexec,mode=1777     0 0
-tmpfs    /run       tmpfs     size=2G,noatime,nodev,nosuid,mode=0755            0 0
-tmpfs    /home/dev/.cache    tmpfs    size=4G,noatime,nodev,nosuid,noexec,mode=700,uid=1000,gid=1000    0 0
-EOF
-fi
+tmpfs    /dev/shm   tmpfs     size=2G,noatime,nodev,nosuid,noexec,mode=1777   0 0
+tmpfs    /run       tmpfs     size=2G,noatime,nodev,nosuid,mode=0755          0 0
+tmpfs    /home/dev/.cache    tmpfs    size=2G,noatime,nodev,nosuid,noexec,mode=700,uid=1000,gid=1000    0 0" >> /etc/fstab
 
 groupadd -f proc
 gpasswd -a root proc
@@ -704,11 +692,11 @@ gpasswd -a root proc
 
 chmod 700 /root
 chown root:root /root
-chmod 755 /home/dev
+chmod 700 /home/dev
 chown dev:dev /home/dev
 
-find /home/dev -type f -exec chmod o-rwx {} ; 2>/dev/null || true
-find /home/dev -type d -exec chmod o-rwx {} ; 2>/dev/null || true
+find /home/dev -type f -exec chmod o-rwx {} \; 2>/dev/null || true
+find /home/dev -type d -exec chmod o-rwx {} \; 2>/dev/null || true
 
 chmod 600 /etc/shadow
 chmod 600 /etc/gshadow
@@ -722,61 +710,68 @@ chmod 440 /etc/sudoers
 chown root:root /etc/sudoers
 chmod 750 /etc/sudoers.d
 chown root:root /etc/sudoers.d
-find /etc/sudoers.d -type f -exec chmod 440 {} ; 2>/dev/null || true
+find /etc/sudoers.d -type f -exec chmod 440 {} \;
 chmod 644 /etc/pam.d/*
 chown root:root /etc/pam.d/*
 chmod 600 /etc/security/access.conf
 chmod 600 /etc/security/limits.conf
-chmod 600 /etc/security/namespace.conf 2>/dev/null || true
-chown root:root /etc/security/* 2>/dev/null || true
-
+chmod 600 /etc/security/namespace.conf
+chown root:root /etc/security/*
 if [[ -d /etc/ssh ]]; then
-chmod 700 /etc/ssh
-chmod 600 /etc/ssh/*_key 2>/dev/null || true
-chmod 644 /etc/ssh/*.pub 2>/dev/null || true
-chmod 644 /etc/ssh/sshd_config 2>/dev/null || true
-chown -R root:root /etc/ssh
+    chmod 700 /etc/ssh
+    chmod 600 /etc/ssh/*_key 2>/dev/null || true
+    chmod 644 /etc/ssh/*.pub 2>/dev/null || true
+    chmod 644 /etc/ssh/sshd_config 2>/dev/null || true
+    chown -R root:root /etc/ssh
 fi
-
 chmod 700 /etc/cron.d 2>/dev/null || true
 chmod 700 /etc/cron.daily 2>/dev/null || true
 chmod 700 /etc/cron.hourly 2>/dev/null || true
 chmod 700 /etc/cron.weekly 2>/dev/null || true
 chmod 700 /etc/cron.monthly 2>/dev/null || true
 chmod 600 /etc/crontab 2>/dev/null || true
-
 if [[ -f /etc/at.deny ]]; then
-chmod 600 /etc/at.deny
+    chmod 600 /etc/at.deny
 fi
-
-chmod 755 /boot
+chmod 700 /boot
 chown root:root /boot
-find /boot -type f -name "vmlinuz*" -exec chmod 600 {} ; 2>/dev/null || true
-find /boot -type f -name "initrd*" -exec chmod 600 {} ; 2>/dev/null || true
-find /boot -type f -name "System.map*" -exec chmod 600 {} ; 2>/dev/null || true
-find /boot -type f -name "config-*" -exec chmod 600 {} ; 2>/dev/null || true
-
+find /boot -type f -name "vmlinuz*" -exec chmod 600 {} \;
+find /boot -type f -name "initrd*" -exec chmod 600 {} \;
+find /boot -type f -name "System.map*" -exec chmod 600 {} \;
+find /boot -type f -name "config-*" -exec chmod 600 {} \;
 if [[ -f /boot/grub/grub.cfg ]]; then
-chmod 600 /boot/grub/grub.cfg
-chown root:root /boot/grub/grub.cfg
+    chmod 600 /boot/grub/grub.cfg
+    chown root:root /boot/grub/grub.cfg
 fi
 
-WORLD_WRITABLE=$(find / -xdev -type f -perm -0002   
-! -path "/tmp/*"   
-! -path "/var/tmp/*"   
-! -path "/proc/*"   
-! -path "/sys/*"   
-2>/dev/null || true)
+WORLD_WRITABLE=$(find / -xdev -type f -perm -0002 \
+    ! -path "/tmp/*" \
+    ! -path "/var/tmp/*" \
+    ! -path "/proc/*" \
+    ! -path "/sys/*" \
+    2>/dev/null || true)
 
 if [[ -n "$WORLD_WRITABLE" ]]; then
-echo "$WORLD_WRITABLE" | xargs -r chmod o-w
+    echo "[!] Found world-writable files:"
+    echo "$WORLD_WRITABLE"
+    echo "[*] Removing world-writable bit from these files"
+    echo "$WORLD_WRITABLE" | xargs -r chmod o-w
 fi
 
-chown root:adm -R /var/log 2>/dev/null || true
-chmod -R 0640 /var/log 2>/dev/null || true
-chmod 0750 /var/log 2>/dev/null || true
+UNOWNED=$(find / -xdev \( -nouser -o -nogroup \) \
+    ! -path "/proc/*" \
+    ! -path "/sys/*" \
+    2>/dev/null || true)
 
-# OPENSNITCH
+if [[ -n "$UNOWNED" ]]; then
+    echo "[!] Found unowned files (review manually):"
+    echo "$UNOWNED"
+fi
+chown root:adm -R /var/log
+chmod -R 0640 /var/log
+chmod 0750 /var/log
+
+# OPENSNITCH 
 
 cat > /etc/systemd/system/opensnitchd.service << 'EOF'
 [Unit]
@@ -807,7 +802,8 @@ systemctl daemon-reload
 systemctl enable opensnitchd.service
 systemctl start opensnitchd.service
 
-git clone –depth 1 https://github.com/DXC-0/Respect-My-Internet.git
+apt install git 
+git clone --depth 1 https://github.com/DXC-0/Respect-My-Internet.git
 cd Respect-My-Internet
 chmod +x install.sh
 ./install.sh
