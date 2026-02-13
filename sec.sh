@@ -7,9 +7,9 @@ set -euo pipefail
 # PRE-CONFIG
 
 apt install -y extrepo iptables iptables-persistent netfilter-persistent --no-install-recommends
-extrepo enable librewolf --no-install-recommends
+extrepo enable librewolf 
 apt update
-apt install -y librewolf
+apt install -y librewolf --no-install-recommends
 
 
 # PACKAGE DENY LIST
@@ -330,297 +330,6 @@ done < <(awk -F: -v current_user="dev" '($3 >= 1000 && $1 != current_user && $7 
 pamu2fcfg -u dev > /etc/security/u2f_keys
 chmod 0400 /etc/security/u2f_keys
 chown root:root /etc/security/u2f_keys
-mkdir -p /var/log/faillock
-chmod 0700 /var/log/faillock
-rm -f /etc/pam.d/remote
-rm -f /etc/pam.d/cron
-
-# Faillock configuration
-cat > /etc/security/faillock.conf << 'EOF'
-deny = 3
-unlock_time = 900
-fail_interval = 900
-silent
-EOF
-
-cat > /etc/pam.d/common-auth << 'EOF'
-#%PAM-1.0
-auth      required    pam_faildelay.so delay=2000000
-auth      required    pam_faillock.so preauth silent deny=5 unlock_time=600 fail_interval=900
-auth      [success=1 default=ignore] pam_u2f.so authfile=/etc/security/u2f_keys cue
-auth      requisite   pam_deny.so
-auth      optional    pam_faillock.so authsucc
-EOF
-
-cat > /etc/pam.d/common-account << 'EOF'
-#%PAM-1.0
-account   required    pam_faillock.so
-account   required    pam_unix.so
-EOF
-
-cat > /etc/pam.d/common-password << 'EOF'
-#%PAM-1.0
-password  requisite   pam_deny.so
-EOF
-
-cat > /etc/pam.d/common-session << 'EOF'
-#%PAM-1.0
-session   required    pam_limits.so
-session   required    pam_unix.so
-session   required    pam_env.so
-session   optional    pam_systemd.so
-session   optional    pam_umask.so umask=077
-session   optional    pam_tmpdir.so
-EOF
-
-cat > /etc/pam.d/common-session-noninteractive << 'EOF'
-#%PAM-1.0
-session   required    pam_limits.so
-session   required    pam_unix.so
-session   required    pam_env.so
-session   optional    pam_systemd.so
-session   optional    pam_umask.so umask=077
-session   optional    pam_tmpdir.so
-EOF
-
-cat > /etc/pam.d/gdm-password << 'EOF'
-#%PAM-1.0
-auth      requisite   pam_nologin.so
-auth      required    pam_faildelay.so delay=2000000
-auth      required    pam_faillock.so preauth silent deny=5 unlock_time=600 fail_interval=900
-auth      [success=1 default=ignore] pam_u2f.so authfile=/etc/security/u2f_keys cue
-auth      requisite   pam_deny.so
-auth      optional    pam_gnome_keyring.so
-auth      optional    pam_faillock.so authsucc
-account   required    pam_faillock.so
-account   include     common-account
-password  include     common-password
-session   required    pam_loginuid.so
-session   optional    pam_gnome_keyring.so auto_start
-session   include     common-session
-EOF
-
-cat > /etc/pam.d/gdm-autologin << 'EOF'
-#%PAM-1.0
-auth      requisite   pam_nologin.so
-auth      optional    pam_gnome_keyring.so
-account   include     common-account
-password  include     common-password
-session   required    pam_loginuid.so
-session   optional    pam_gnome_keyring.so auto_start
-session   include     common-session
-EOF
-
-cat > /etc/pam.d/sudo << 'EOF'
-#%PAM-1.0
-auth      include     common-auth
-account   include     common-account
-session   required    pam_limits.so
-session   include     common-session
-EOF
-
-cat > /etc/pam.d/sudo-i << 'EOF'
-#%PAM-1.0
-auth      include     common-auth
-account   include     common-account
-session   required    pam_limits.so
-session   include     common-session
-EOF
-
-cat > /etc/pam.d/su << 'EOF'
-#%PAM-1.0
-auth      include     common-auth
-account   include     common-account
-session   required    pam_limits.so
-session   include     common-session
-EOF
-
-cat > /etc/pam.d/su-l << 'EOF'
-#%PAM-1.0
-auth      include     common-auth
-account   include     common-account
-session   required    pam_limits.so
-session   include     common-session
-EOF
-
-cat > /etc/pam.d/login << 'EOF'
-#%PAM-1.0
-auth      requisite   pam_nologin.so
-auth      include     common-auth
-account   required    pam_access.so
-account   include     common-account
-session   required    pam_limits.so
-session   required    pam_loginuid.so
-session   optional    pam_lastlog.so showfailed
-session   include     common-session
-EOF
-
-cat > /etc/pam.d/chfn << 'EOF'
-#%PAM-1.0
-auth      sufficient  pam_rootok.so
-auth      include     common-auth
-account   include     common-account
-session   include     common-session
-EOF
-
-cat > /etc/pam.d/chsh << 'EOF'
-#%PAM-1.0
-auth      required    pam_shells.so
-auth      sufficient  pam_rootok.so
-auth      include     common-auth
-account   include     common-account
-session   include     common-session
-EOF
-
-cat > /etc/pam.d/chpasswd << 'EOF'
-#%PAM-1.0
-password  requisite   pam_deny.so
-EOF
-
-cat > /etc/pam.d/newusers << 'EOF'
-#%PAM-1.0
-password  requisite   pam_deny.so
-EOF
-
-cat > /etc/pam.d/passwd << 'EOF'
-#%PAM-1.0
-password  requisite   pam_deny.so
-EOF
-
-cat > /etc/pam.d/runuser << 'EOF'
-#%PAM-1.0
-auth      sufficient  pam_rootok.so
-session   required    pam_limits.so
-session   required    pam_unix.so
-EOF
-
-cat > /etc/pam.d/runuser-l << 'EOF'
-#%PAM-1.0
-auth      include     runuser
-session   include     runuser
-EOF
-
-cat > /etc/pam.d/sshd << 'EOF'
-#%PAM-1.0
-auth      required    pam_deny.so
-account   required    pam_deny.so
-password  required    pam_deny.so
-session   required    pam_deny.so
-EOF
-
-cat > /etc/pam.d/other << 'EOF'
-#%PAM-1.0
-auth      required    pam_deny.so
-account   required    pam_deny.so
-password  required    pam_deny.so
-session   required    pam_deny.so
-EOF
-
-cat > /etc/pam.d/systemd-user << 'EOF'
-#%PAM-1.0
-account   include     common-account
-session   required    pam_limits.so
-session   required    pam_unix.so
-session   required    pam_env.so user_readenv=0
-session   optional    pam_systemd.so
-EOF
-
-chmod 644 /etc/pam.d/*
-chown root:root /etc/pam.d/*
-
-# SUDO
-cat >/etc/sudoers <<'EOF'
-Defaults env_reset
-Defaults !setenv
-Defaults always_set_home
-Defaults timestamp_timeout=0
-Defaults passwd_timeout=0
-Defaults passwd_tries=1
-Defaults use_pty
-Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
-Defaults logfile="/var/log/sudo.log"
-Defaults log_input,log_output
-Defaults editor=/bin/false
-Defaults !env_editor
-
-dev  ALL=(ALL) /usr/sbin/, /usr/bin/
-EOF
-chmod 0440 /etc/sudoers
-chmod -R 0440 /etc/sudoers.d
-
-# MISC HARDENING
-cat >/etc/shells <<'EOF'
-/bin/bash
-EOF
-
-cat >/etc/host.conf <<'EOF'
-multi on
-order hosts
-EOF
-
-cat >/etc/security/limits.d/limits.conf <<'EOF'
-*           hard    nproc         4096
-*            -      maxlogins     3
-*            -      maxsyslogins  3
-dev          -      maxlogins     3
-dev          -      maxsyslogins  3
-root         -      maxlogins     2
-root         -      maxsyslogin   2
-root        hard    nproc         65536
-*           hard    core          0
-EOF
-
-echo "ProcessSizeMax=0
-Storage=none" >> /etc/systemd/coredump.conf
-echo "ulimit -c 0" >> /etc/profile
-
-sed -i 's/^ENCRYPT_METHOD.*/ENCRYPT_METHOD YESCRYPT/' /etc/login.defs
-sed -i 's/^UID_MIN.*/UID_MIN 1000/' /etc/login.defs
-sed -i 's/^UID_MAX.*/UID_MAX 60000/' /etc/login.defs
-sed -i 's/^SHELL=.*/SHELL=\/usr\/sbin\/nologin/' /etc/default/useradd
-sed -i 's/^DSHELL=.*/DSHELL=\/usr\/sbin\/nologin/' /etc/adduser.conf
-echo "UMASK 077" >> /etc/login.defs
-echo "umask 077" >> /etc/profile
-echo "umask 077" >> /etc/bash.bashrc
-echo "ALL: LOCAL, 127.0.0.1" >> /etc/hosts.allow
-echo "ALL: ALL" > /etc/hosts.deny
-chmod 644 /etc/hosts.allow
-chmod 644 /etc/hosts.deny
-
-cat > /etc/security/access.conf << EOF
-+:dev:LOCAL
--:dev:ALL EXCEPT LOCAL
-+:root:LOCAL
--:root:ALL EXCEPT LOCAL
--:ALL:REMOTE
--:ALL:ALL
-EOF
-chmod 644 /etc/security/access.conf
-
-# GRUB
-
-sed -i 's|^GRUB_CMDLINE_LINUX_DEFAULT=.*|GRUB_CMDLINE_LINUX_DEFAULT="quiet splash mitigations=auto spectre_v2=on spec_store_bypass_disable=on amd_iommu=on iommu=pt init_on_alloc=1 init_on_free=1 page_alloc.shuffle=1 randomize_kstack_offset=on slab_nomerge vsyscall=none debugfs=off oops=panic ipv6.disable=1 processor.max_cstate=1 idle=nomwait amd_pstate=passive"|' /etc/default/grub
-update-grub
-chown root:root /etc/default/grub
-chmod 640 /etc/default/grub
-
-# SYSCTL
-
-rm -rf /usr/lib/sysctl.d
-mkdir -p /usr/lib/sysctl.d
-cat > /usr/lib/sysctl.d/sysctl.conf << 'EOF'
-kernel.kptr_restrict = 2
-kernel.dmesg_restrict = 1
-kernel.unprivileged_bpf_disabled = 1
-kernel.kexec_load_disabled = 1
-kernel.yama.ptrace_scope = 2
-kernel.sysrq = 4
-kernel.watchdog = 0
-kernel.core_uses_pid = 1
-kernel.suid_dumpable = 0
-kernel.core_pattern = |/bin/false
-kernel.io_uring_disabled = 2
-kernel.randomize_va_space = 2
 kernel.panic_on_oops = 1
 kernel.ctrl-alt-del = 0
 kernel.acct = 1
@@ -640,8 +349,6 @@ fs.protected_symlinks = 1
 fs.protected_regular = 2
 fs.protected_fifos = 2
 net.ipv4.icmp_echo_ignore_all = 1
-net.ipv4.icmp_echo_ignore_broadcasts = 1
-net.ipv4.icmp_ignore_bogus_error_responses = 1
 net.ipv4.conf.all.rp_filter = 1
 net.ipv4.conf.default.rp_filter = 1
 net.ipv4.conf.all.accept_redirects = 0
@@ -679,7 +386,6 @@ EOF
 sysctl --system
 
 # MODULES
-
 cat > /etc/modprobe.d/harden.conf << 'EOF'
 blacklist af_802154
 install af_802154 /bin/false
@@ -858,46 +564,6 @@ install tipc /bin/false
 blacklist udf
 install udf /bin/false
 blacklist uvcvideo
-install uvcvideo /bin/false
-blacklist vboxdrv
-install vboxdrv /bin/false
-blacklist vboxnetadp
-install vboxnetadp /bin/false
-blacklist vboxnetflt
-install vboxnetflt /bin/false
-blacklist vhost
-install vhost /bin/false
-blacklist vhost_net
-install vhost_net /bin/false
-blacklist vhost_vsock
-install vhost_vsock /bin/false
-blacklist video1394
-install video1394 /bin/false
-blacklist vmmon
-install vmmon /bin/false
-blacklist vmw_vmci
-install vmw_vmci /bin/false
-blacklist xen
-install xen /bin/false
-blacklist x25
-install x25 /bin/false
-blacklist mei
-install mei /bin/false
-blacklist mei_me
-install mei_me /bin/false
-blacklist mei_hdcp
-install mei_hdcp /bin/false
-blacklist mei_pxp
-install mei_pxp /bin/false
-blacklist thunderbolt
-install thunderbolt /bin/false
-blacklist iwlmvm
-install iwlmvm /bin/false
-blacklist iwldvm
-install iwldvm /bin/false
-blacklist ipv6
-install ipv6 /bin/false
-EOF
 
 # FSTAB
 
@@ -913,189 +579,80 @@ tmpfs    /home/dev/.cache    tmpfs    size=2G,noatime,nodev,nosuid,noexec,mode=7
 groupadd -f proc
 gpasswd -a root proc
 
-# PERMISSIONS
+Cmnd_Alias FIREWALL = /usr/sbin/iptables -L, /usr/sbin/iptables -S, /usr/sbin/iptables-save
+Cmnd_Alias PACKAGES = /usr/bin/apt update, /usr/bin/apt list --upgradable, /usr/bin/apt upgrade
+Cmnd_Alias MAINT = /usr/bin/systemctl status *, /usr/bin/journalctl -xe
 
-chmod 700 /root
-chown root:root /root
-chmod 700 /home/dev
-chown dev:dev /home/dev
-
-find /home/dev -type f -exec chmod o-rwx {} \; 2>/dev/null || true
-find /home/dev -type d -exec chmod o-rwx {} \; 2>/dev/null || true
-
-chmod 600 /etc/shadow
-chmod 600 /etc/gshadow
-chown root:root /etc/shadow
-chown root:root /etc/gshadow
-chmod 644 /etc/passwd
-chmod 644 /etc/group
-chown root:root /etc/passwd
-chown root:root /etc/group
-chmod 440 /etc/sudoers
-chown root:root /etc/sudoers
-chmod 750 /etc/sudoers.d
-chown root:root /etc/sudoers.d
-find /etc/sudoers.d -type f -exec chmod 440 {} \;
-chmod 644 /etc/pam.d/*
-chown root:root /etc/pam.d/*
-chmod 600 /etc/security/access.conf
-chmod 600 /etc/security/limits.conf
-chmod 600 /etc/security/namespace.conf
-chown root:root /etc/security/*
-if [[ -d /etc/ssh ]]; then
-    chmod 700 /etc/ssh
-    chmod 600 /etc/ssh/*_key 2>/dev/null || true
-    chmod 644 /etc/ssh/*.pub 2>/dev/null || true
-    chmod 644 /etc/ssh/sshd_config 2>/dev/null || true
-    chown -R root:root /etc/ssh
-fi
-chmod 700 /etc/cron.d 2>/dev/null || true
-chmod 700 /etc/cron.daily 2>/dev/null || true
-chmod 700 /etc/cron.hourly 2>/dev/null || true
-chmod 700 /etc/cron.weekly 2>/dev/null || true
-chmod 700 /etc/cron.monthly 2>/dev/null || true
-chmod 600 /etc/crontab 2>/dev/null || true
-if [[ -f /etc/at.deny ]]; then
-    chmod 600 /etc/at.deny
-fi
-chmod 700 /boot
-chown root:root /boot
-find /boot -type f -name "vmlinuz*" -exec chmod 600 {} \;
-find /boot -type f -name "initrd*" -exec chmod 600 {} \;
-find /boot -type f -name "System.map*" -exec chmod 600 {} \;
-find /boot -type f -name "config-*" -exec chmod 600 {} \;
-if [[ -f /boot/grub/grub.cfg ]]; then
-    chmod 600 /boot/grub/grub.cfg
-    chown root:root /boot/grub/grub.cfg
-fi
-
-WORLD_WRITABLE=$(find / -xdev -type f -perm -0002 \
-    ! -path "/tmp/*" \
-    ! -path "/var/tmp/*" \
-    ! -path "/proc/*" \
-    ! -path "/sys/*" \
-    2>/dev/null || true)
-
-if [[ -n "$WORLD_WRITABLE" ]]; then
-    echo "[!] Found world-writable files:"
-    echo "$WORLD_WRITABLE"
-    echo "[*] Removing world-writable bit from these files"
-    echo "$WORLD_WRITABLE" | xargs -r chmod o-w
-fi
-
-UNOWNED=$(find / -xdev \( -nouser -o -nogroup \) \
-    ! -path "/proc/*" \
-    ! -path "/sys/*" \
-    2>/dev/null || true)
-
-if [[ -n "$UNOWNED" ]]; then
-    echo "[!] Found unowned files (review manually):"
-    echo "$UNOWNED"
-fi
-chown root:adm -R /var/log
-chmod -R 0640 /var/log
-chmod 0750 /var/log
-
-# OPENSNITCH 
-
-cat > /etc/systemd/system/opensnitchd.service << 'EOF'
-[Unit]
-Description=OpenSnitch Firewall Daemon
-After=network.target
-After=netfilter-persistent.service
-Wants=network.target
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/opensnitchd -rules-path /etc/opensnitchd/rules -log-file /var/log/opensnitchd.log
-Restart=on-failure
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
+dev ALL=(root) FIREWALL, PACKAGES, MAINT
 EOF
 
-mkdir -p /etc/opensnitchd/rules
-chmod 750 /etc/opensnitchd
-chmod 750 /etc/opensnitchd/rules
-touch /var/log/opensnitchd.log
-chmod 640 /var/log/opensnitchd.log
+chmod 0440 /etc/sudoers
+chmod -R 0000 /etc/sudoers.d
 
-systemctl daemon-reload
-systemctl enable opensnitchd.service
-systemctl start opensnitchd.service
+# STRIP CAPABILITIES
+STRIP_CAPS=(
+"/bin/dash" "/bin/rbash" "/bin/sh" "/usr/bin/7z" "/usr/bin/7za" "/usr/bin/apropos" "/usr/bin/apt" "/usr/bin/apt-cache" "/usr/bin/apt-get" "/usr/bin/ar" "/usr/bin/aria2c" "/usr/bin/arj" "/usr/bin/ash" "/usr/bin/at" "/usr/bin/awk" "/usr/bin/base32" "/usr/bin/base64" "/usr/bin/basenc" "/usr/bin/bash" "/usr/bin/batch" "/usr/bin/bunzip2" "/usr/bin/busctl" "/usr/bin/busybox" "/usr/bin/bzip2" "/usr/bin/cat" "/usr/bin/cmp" "/usr/bin/column" "/usr/bin/comm" "/usr/bin/composer" "/usr/bin/cp" "/usr/bin/cpan" "/usr/bin/cpio" "/usr/bin/crontab" "/usr/bin/csh" "/usr/bin/csplit" "/usr/bin/curl" "/usr/bin/cut" "/usr/bin/cvs" "/usr/bin/dash" "/usr/bin/dd" "/usr/bin/diff" "/usr/bin/dmesg" "/usr/bin/dpkg" "/usr/bin/ed" "/usr/bin/egrep" "/usr/bin/emacs" "/usr/bin/emacsclient" "/usr/bin/env" "/usr/bin/expand" "/usr/bin/fgrep" "/usr/bin/file" "/usr/bin/find" "/usr/bin/fish" "/usr/bin/fmt" "/usr/bin/fold" "/usr/bin/gawk" "/usr/bin/gem" "/usr/bin/git" "/usr/bin/grep" "/usr/bin/gunzip" "/usr/bin/gzip" "/usr/bin/hd" "/usr/bin/head" "/usr/bin/hexdump" "/usr/bin/hg" "/usr/bin/hostnamectl" "/usr/bin/info" "/usr/bin/install" "/usr/bin/ionice" "/usr/bin/joe" "/usr/bin/join" "/usr/bin/journalctl" "/usr/bin/jq" "/usr/bin/ksh" "/usr/bin/less" "/usr/bin/ln" "/usr/bin/loginctl" "/usr/bin/lua" "/usr/bin/lua5.1" "/usr/bin/lua5.3" "/usr/bin/lua5.4" "/usr/bin/man" "/usr/bin/mawk" "/usr/bin/mcedit" "/usr/bin/more" "/usr/bin/most" "/usr/bin/mv" "/usr/bin/mysql" "/usr/bin/nano" "/usr/bin/nawk" "/usr/bin/ne" "/usr/bin/nice" "/usr/bin/nl" "/usr/bin/node" "/usr/bin/nodejs" "/usr/bin/nohup" "/usr/bin/npm" "/usr/bin/od" "/usr/bin/openssl" "/usr/bin/parallel" "/usr/bin/paste" "/usr/bin/pax" "/usr/bin/perl" "/usr/bin/pg" "/usr/bin/php" "/usr/bin/pico" "/usr/bin/pip" "/usr/bin/pip3" "/usr/bin/pr" "/usr/bin/psql" "/usr/bin/python" "/usr/bin/python3" "/usr/bin/red" "/usr/bin/redis-cli" "/usr/bin/resolvectl" "/usr/bin/rev" "/usr/bin/rsync" "/usr/bin/ruby" "/usr/bin/rview" "/usr/bin/rvim" "/usr/bin/scp" "/usr/bin/screen" "/usr/bin/script" "/usr/bin/sed" "/usr/bin/sftp" "/usr/bin/shuf" "/usr/bin/sort" "/usr/bin/split" "/usr/bin/sqlite3" "/usr/bin/ssh" "/usr/bin/ssh-keygen" "/usr/bin/ssh-keyscan" "/usr/bin/strings" "/usr/bin/svn" "/usr/bin/systemctl" "/usr/bin/tac" "/usr/bin/tail" "/usr/bin/tar" "/usr/bin/taskset" "/usr/bin/tclsh" "/usr/bin/tcsh" "/usr/bin/tee" "/usr/bin/time" "/usr/bin/timedatectl" "/usr/bin/timeout" "/usr/bin/tmux" "/usr/bin/tr" "/usr/bin/unexpand" "/usr/bin/uniq" "/usr/bin/unxz" "/usr/bin/unzip" "/usr/bin/vi" "/usr/bin/view" "/usr/bin/vim" "/usr/bin/vim.basic" "/usr/bin/vim.tiny" "/usr/bin/vimdiff" "/usr/bin/watch" "/usr/bin/wc" "/usr/bin/wget" "/usr/bin/whatis" "/usr/bin/wish" "/usr/bin/xargs" "/usr/bin/xmllint" "/usr/bin/xxd" "/usr/bin/xz" "/usr/bin/yarn" "/usr/bin/yelp" "/usr/bin/yq" "/usr/bin/zip" "/usr/bin/zsh" "/usr/sbin/arp" "/usr/sbin/bridge" "/usr/sbin/capsh" "/usr/sbin/chroot" "/usr/sbin/cryptsetup" "/usr/sbin/debugfs" "/usr/sbin/dmsetup" "/usr/sbin/fdisk" "/usr/sbin/gdisk" "/usr/sbin/getcap" "/usr/sbin/ifconfig" "/usr/sbin/ip" "/usr/sbin/ip6tables" "/usr/sbin/iptables" "/usr/sbin/losetup" "/usr/sbin/lvm" "/usr/sbin/lvs" "/usr/sbin/mkfs" "/usr/sbin/mount" "/usr/sbin/netstat" "/usr/sbin/nft" "/usr/sbin/parted" "/usr/sbin/pvs" "/usr/sbin/route" "/usr/sbin/setcap" "/usr/sbin/ss" "/usr/sbin/tc" "/usr/sbin/umount" "/usr/sbin/vgs"
+)
 
-apt install git 
-git clone --depth 1 https://github.com/DXC-0/Respect-My-Internet.git
-cd Respect-My-Internet
-chmod +x install.sh
-./install.sh
-systemctl restart opensnitchd
-cd
+ALL_GTFOBINS=(
+"7z" "aa-exec" "ab" "agetty" "alpine" "ansible-playbook" "ansible-test" "aoss" "apache2ctl" "apt" "apt-get" "ar" "aria2c" "arj" "arp" "as" "ascii-xfr" "ascii85" "ash" "aspell" "at" "atobm" "awk" "aws" "base32" "base58" "base64" "basenc" "basez" "bash" "batcat" "bc" "bconsole" "bpftrace" "bridge" "bundle" "bundler" "busctl" "busybox" "byebug" "bzip2" "c89" "c99" "cabal" "cancel" "capsh" "cat" "cdist" "certbot" "check_by_ssh" "check_cups" "check_log" "check_memory" "check_raid" "check_ssl_cert" "check_statusfile" "chmod" "choom" "chown" "chroot" "clamscan" "cmp" "cobc" "column" "comm" "composer" "cowsay" "cowthink" "cp" "cpan" "cpio" "cpulimit" "crash" "crontab" "csh" "csplit" "csvtool" "cupsfilter" "curl" "cut" "dash" "date" "dc" "dd" "debugfs" "dialog" "diff" "dig" "distcc" "dmesg" "dmidecode" "dmsetup" "dnf" "docker" "dos2unix" "dosbox" "dotnet" "dpkg" "dstat" "dvips" "easy_install" "eb" "ed" "efax" "elvish" "emacs" "enscript" "env" "eqn" "espeak" "ex" "exiftool" "expand" "expect" "facter" "file" "find" "finger" "fish" "flock" "fmt" "fold" "fping" "ftp" "gawk" "gcc" "gcloud" "gcore" "gdb" "gem" "genie" "genisoimage" "ghc" "ghci" "gimp" "ginsh" "git" "grc" "grep" "gtester" "gzip" "hd" "head" "hexdump" "highlight" "hping3" "iconv" "iftop" "install" "ionice" "ip" "irb" "ispell" "jjs" "joe" "join" "journalctl" "jq" "jrunscript" "jtag" "julia" "knife" "ksh" "ksshell" "ksu" "kubectl" "latex" "latexmk" "ld.so" "ldconfig" "less" "lftp" "links" "ln" "loginctl" "logsave" "look" "lp" "ltrace" "lua" "lualatex" "luatex" "lwp-download" "lwp-request" "mail" "make" "man" "mawk" "minicom" "more" "mosquitto" "mount" "msfconsole" "msgattrib" "msgcat" "msgconv" "msgfilter" "msgmerge" "msguniq" "mtr" "multitime" "mv" "mysql" "nano" "nasm" "nawk" "nc" "ncdu" "ncftp" "neofetch" "nft" "nice" "nl" "nm" "nmap" "node" "nohup" "npm" "nroff" "nsenter" "ntpdate" "octave" "od" "openssl" "openvpn" "openvt" "opkg" "pandoc" "paste" "pax" "pdb" "pdflatex" "pdftex" "perf" "perl" "perlbug" "pexec" "pg" "php" "pic" "pico" "pidstat" "pip" "pkexec" "pkg" "posh" "pr" "pry" "psftp" "psql" "ptx" "puppet" "pwsh" "python" "rake" "rc" "readelf" "red" "redcarpet" "redis" "restic" "rev" "rlogin" "rlwrap" "rpm" "rpmdb" "rpmquery" "rpmverify" "rsync" "rtorrent" "ruby" "run-mailcap" "run-parts" "runscript" "rview" "rvim" "sash" "scanmem" "scp" "screen" "script" "scrot" "sed" "service" "setarch" "setfacl" "setlock" "sftp" "sg" "shuf" "slsh" "smbclient" "snap" "socat" "socket" "soelim" "softlimit" "sort" "split" "sqlite3" "sqlmap" "ss" "ssh" "ssh-agent" "ssh-keygen" "ssh-keyscan" "sshpass" "start-stop-daemon" "stdbuf" "strace" "strings" "su" "sudo" "sysctl" "systemctl" "systemd-resolve" "tac" "tail" "tar" "task" "taskset" "tasksh" "tbl" "tclsh" "tcpdump" "tdbtool" "tee" "telnet" "terraform" "tex" "tftp" "tic" "time" "timedatectl" "timeout" "tmate" "tmux" "top" "torify" "torsocks" "troff" "tshark" "ul" "unexpand" "uniq" "unshare" "unsquashfs" "unzip" "update-alternatives" "uudecode" "uuencode" "vagrant" "valgrind" "varnishncsa" "vi" "view" "vigr" "vim" "vimdiff" "vipw" "virsh" "volatility" "w3m" "wall" "watch" "wc" "wget" "whiptail" "whois" "wireshark" "wish" "xargs" "xdg-user-dir" "xdotool" "xelatex" "xetex" "xmodmap" "xmore" "xpad" "xxd" "xz" "yarn" "yash" "yelp" "yum" "zathura" "zip" "zsh" "zsoelim" "zypper"
+)
 
-# POLKIT
+for interp in "${STRIP_CAPS[@]}"; do
+    [[ -f "$interp" ]] && getcap "$interp" &>/dev/null && setcap -r "$interp" 2>/dev/null
+done
 
-mkdir -p /etc/polkit-1/rules.d
-cat > /etc/polkit-1/rules.d/50-gnome-allow.rules << 'EOF'
-polkit.addRule(function(action, subject) {
-if (subject.user == "dev") {
-if (action.id == "org.freedesktop.login1.suspend" ||
-action.id == "org.freedesktop.login1.hibernate" ||
-action.id == "org.freedesktop.login1.reboot" ||
-action.id == "org.freedesktop.login1.power-off" ||
-action.id == "org.freedesktop.NetworkManager.network-control" ||
-action.id == "org.freedesktop.NetworkManager.settings.modify.system" ||
-action.id == "org.freedesktop.NetworkManager.enable-disable-network" ||
-action.id == "org.freedesktop.NetworkManager.enable-disable-wifi" ||
-action.id == "org.freedesktop.ModemManager1.Device.Control" ||
-action.id == "org.freedesktop.timedate1.set-time" ||
-action.id == "org.freedesktop.timedate1.set-timezone" ||
-action.id == "org.freedesktop.locale1.set-locale" ||
-action.id == "org.freedesktop.hostname1.set-static-hostname" ||
-action.id == "org.freedesktop.hostname1.set-hostname" ||
-action.id == "org.freedesktop.Accounts.UserAdministration" ||
-action.id.indexOf("org.gnome.controlcenter") == 0 ||
-action.id.indexOf("org.freedesktop.color") == 0) {
-return polkit.Result.YES;
-}
-}
-return polkit.Result.NO;
-});
-EOF
+cap_output=$(getcap -r /usr /bin /sbin 2>/dev/null | awk '{print $1}')
+for binary in $cap_output; do
+    basename=$(basename "$binary")
+    for gtfo in "${ALL_GTFOBINS[@]}"; do
+        if [[ "$basename" == "$gtfo" ]] || [[ "$basename" == "${gtfo}."* ]]; then
+            setcap -r "$binary" 2>/dev/null
+            break
+        fi
+    done
+done
 
-chmod 0644 /etc/polkit-1/rules.d/50-gnome-allow.rules
+# CREATE PLACEHOLDER BLOCKERS
+dangerous_paths=(
+"/usr/bin/perl" "/usr/bin/perl5" "/usr/bin/python" "/usr/bin/python2" "/usr/bin/python3"
+"/usr/bin/ruby" "/usr/bin/lua" "/usr/bin/lua5.1" "/usr/bin/lua5.3" "/usr/bin/lua5.4"
+"/usr/bin/node" "/usr/bin/nodejs" "/usr/bin/php" "/usr/bin/php7" "/usr/bin/php8"
+"/usr/bin/awk" "/usr/bin/gawk" "/usr/bin/mawk" "/usr/bin/nawk" "/usr/bin/sed"
+"/usr/bin/ed" "/usr/bin/vi" "/usr/bin/vim" "/usr/bin/emacs" "/usr/bin/tar"
+"/usr/bin/zip" "/usr/bin/unzip" "/usr/bin/gzip" "/usr/bin/bzip2" "/usr/bin/xz"
+"/usr/bin/7z" "/usr/bin/7za" "/usr/bin/curl" "/usr/bin/wget" "/usr/bin/nc"
+"/usr/bin/ncat" "/usr/bin/netcat" "/usr/bin/socat" "/usr/bin/telnet" "/usr/bin/ftp"
+"/usr/bin/ssh" "/usr/bin/scp" "/usr/bin/sftp" "/usr/bin/rsync" "/usr/bin/dd"
+"/usr/bin/xxd" "/usr/bin/od" "/usr/bin/hexdump" "/usr/bin/strings" "/usr/bin/objdump"
+"/usr/bin/readelf" "/usr/bin/nm" "/usr/bin/as" "/usr/bin/ld" "/usr/bin/ar"
+"/usr/sbin/tcpdump" "/usr/bin/nmap" "/usr/bin/tshark" "/usr/bin/wireshark"
+"/usr/bin/msfconsole" "/usr/bin/msfvenom" "/usr/bin/hydra" "/usr/bin/medusa"
+"/usr/bin/john" "/usr/bin/hashcat" "/usr/bin/sqlmap" "/usr/bin/nikto"
+"/usr/bin/aircrack-ng" "/usr/bin/ettercap" "/usr/bin/bettercap" "/usr/bin/responder"
+)
 
-# PRIVILEGE ESCALATION HARDENING
-
-echo "" > /etc/securetty
-chmod 600 /etc/securetty
-
-echo "dev" > /etc/cron.allow
-echo "dev" > /etc/at.allow
-chmod 600 /etc/cron.allow
-chmod 600 /etc/at.allow
-echo "" > /etc/cron.deny 2>/dev/null || true
-echo "" > /etc/at.deny 2>/dev/null || true
-
-rm -f /usr/bin/run0 2>/dev/null || true
-rm -f /usr/bin/su 2>/dev/null || true
+for binary_path in "${dangerous_paths[@]}"; do
+    if [[ ! -e "$binary_path" ]]; then
+        mkdir -p "$(dirname "$binary_path")"
+        touch "$binary_path"
+        chmod 000 "$binary_path"
+        chattr +i "$binary_path" 2>/dev/null || true
+    fi
+done
 
 # LOCKDOWN
-
-find / -xdev \( -perm -4000 -o -perm -2000 \) -type f -exec chmod a-s {} \; 2>/dev/null || true
+find / -xdev \( -perm -4000 -o -perm -2000 \) -type f -exec chmod a-s {} \; 
 chmod u+s /usr/bin/sudo
 
 apt clean
 apt autopurge -y
 RC_PKGS=$(dpkg -l | grep '^rc' | awk '{print $2}' || true)
 if [ -n "$RC_PKGS" ]; then
-apt purge -y $RC_PKGS 2>/dev/null || true
+    echo "$RC_PKGS" | xargs apt purge -y 2>/dev/null || true
 fi
 
 # IMMUTABLE FLAGS
-
 chattr +i /etc/passwd 2>/dev/null || true
 chattr +i /etc/passwd- 2>/dev/null || true
 chattr +i /etc/shadow 2>/dev/null || true
@@ -1131,16 +688,15 @@ chattr -R +i /etc/profile.d 2>/dev/null || true
 chattr +i /etc/bash.bashrc 2>/dev/null || true
 chattr +i /root/.bashrc 2>/dev/null || true
 chattr +i /home/dev/.bashrc 2>/dev/null || true
-chattr -R +i /etc/cron.allow 2>/dev/null || true
-chattr -R +i /etc/at.allow 2>/dev/null || true
-chattr -R +i /etc/cron.d 2>/dev/null || true
-chattr -R +i /etc/cron.daily 2>/dev/null || true
-chattr -R +i /etc/cron.hourly 2>/dev/null || true
-chattr -R +i /etc/cron.monthly 2>/dev/null || true
-chattr -R +i /etc/cron.weekly 2>/dev/null || true
+chattr +i /etc/cron.allow 2>/dev/null || true
+chattr +i /etc/at.allow 2>/dev/null || true
 chattr -R +i /etc/polkit-1 2>/dev/null || true
 chattr +i /etc/nsswitch.conf 2>/dev/null || true
 chattr +i /etc/ld.so.conf 2>/dev/null || true
 chattr -R +i /etc/ld.so.conf.d 2>/dev/null || true
+chattr -R +i /etc/X11 2>/dev/null || true
+chattr -R +i /lib/modules 2>/dev/null || true
+chattr -R +i /boot 2>/dev/null || true
+chattr -R +i /usr 2>/dev/null || true
 
 echo "HARDENING COMPLETE"
